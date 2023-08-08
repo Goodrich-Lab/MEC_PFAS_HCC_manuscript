@@ -1,0 +1,688 @@
+---
+title: 'MEC analysis'
+subtitle: "Single Exposure Analysis- HCC"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+```
+
+```{r load data prs}
+data <- readRDS(fs::path(
+          dir_cleaned_data,
+          "p27_hhear_pfas_covar_diet_prs_V1.RDS"))
+
+prs_name <- colnames(data %>% select(contains("prs")))
+```
+
+## Data preparation
+
+1) HCC data: 240 cases, 240 controls
+2) NAFLD-related  HCC data : 97 cases, 97 controls
+3) other  HCC data : 143 cases, 143 controls
+```{r hcc data prs}
+sample_id1 <- data %>% filter(status == "HCC") %>% select(setnum)
+sample_id2 <- data %>% filter(casetype == "NAFLD-related HCC") %>% select(setnum)
+sample_id3 <- data %>% filter(casetype == "Other HCC") %>% select(setnum)
+data_analysis1 <- data %>% filter(setnum %in% sample_id1$setnum)
+data_analysis2 <- data %>% filter(setnum %in% sample_id2$setnum)
+data_analysis3 <- data %>% filter(setnum %in% sample_id3$setnum)
+
+data_analysis_hcc <- data_analysis1 %>% 
+  # mutate_at(.vars = pfas_name[1:8],
+  #           .funs = list(scld = ~scale(.),
+  #                        lg2 = ~log2(.), 
+  #                        median = ~ifelse(. < quantile(., 0.5, na.rm = TRUE), 0, 1),
+  #                        `85pct` = ~ifelse(. < quantile(., 0.85, na.rm = TRUE), 0, 1))) %>%
+  mutate(status = ifelse(status== "Control", 0, 1)) %>%
+  mutate_at(.vars = c("pfas_pfds_detect", "pfas_pfpes_detect", "pfas_pftrda_detect"),
+            .funs = ~factor(., levels = c("non_detected", "detected")))
+
+data_analysis_nafld_hcc <- data_analysis2 %>% 
+  # mutate_at(.vars = pfas_name[1:8],
+  #           .funs = list(scld = ~scale(.),
+  #                        lg2 = ~log2(.), 
+  #                        median = ~ifelse(. < quantile(., 0.5, na.rm = TRUE), 0, 1),
+  #                        `85pct` = ~ifelse(. < quantile(., 0.85, na.rm = TRUE), 0, 1))) %>%
+  mutate(status = ifelse(status== "Control", 0, 1)) %>%
+  mutate_at(.vars = c("pfas_pfds_detect", "pfas_pfpes_detect", "pfas_pftrda_detect"),
+            .funs = ~factor(., levels = c("non_detected", "detected")))
+
+data_analysis_other_hcc <- data_analysis3 %>% 
+  # mutate_at(.vars = pfas_name[1:8],
+  #           .funs = list(scld = ~scale(.),
+  #                        lg2 = ~log2(.), 
+  #                        median = ~ifelse(. < quantile(., 0.5, na.rm = TRUE), 0, 1),
+  #                        `85pct` = ~ifelse(. < quantile(., 0.85, na.rm = TRUE), 0, 1))) %>%
+  mutate(status = ifelse(status== "Control", 0, 1)) %>%
+  mutate_at(.vars = c("pfas_pfds_detect", "pfas_pfpes_detect", "pfas_pftrda_detect"),
+            .funs = ~factor(., levels = c("non_detected", "detected")))
+```
+
+## Data summary {.tabset}
+### Data summary for overall HCC data
+```{r pfas summary for hcc data only prs, results = 'asis'}
+table1::table1(~.|status, data_analysis_hcc %>% select(status, prs_name, bmi_cat, alcohol_intake_cat,smokestatus, diabetes))
+```
+
+### Data summary for NAFLD related HCC data
+```{r pfas summary for NAFLD related HCC data prs}
+table1::table1(~.|status, data_analysis_nafld_hcc %>% select(status, prs_name, bmi_cat, alcohol_intake_cat,smokestatus, diabetes))
+
+```
+
+### Data summary for other HCC data
+```{r pfas summary for other HCC prs}
+table1::table1(~.|status, data_analysis_other_hcc %>% select(status, prs_name, bmi_cat, alcohol_intake_cat,smokestatus, diabetes))
+```
+
+## Missing data checking
+```{r missing control data included}
+missing <- data_analysis_hcc %>% filter((is.na(prs_uw) & status == 0))
+
+match_info <- data_analysis_hcc %>% filter(setnum %in% missing$setnum & status == 1)
+
+## match control for setnum 2064-----
+matched_control1 <- data %>% filter(studyarea == match_info[1,]$studyarea &
+                             sex == match_info[1,]$sex &
+                             eth == match_info[1,]$eth &
+                             blood_age == match_info[1,]$blood_age &
+                             q1_byr == match_info[1,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control1$setnum[2] %in% data_analysis_hcc$setnum)
+### setnum 2056 was not in hcc data. Replace the missing control of 2064 with control 2056
+
+data_analysis_hcc1 <- data_analysis_hcc %>% filter(!(status == 0 & setnum == 2064)) %>% labelled::remove_labels(setnum) %>%
+  mutate(setnum = as.numeric(setnum))%>% 
+  bind_rows(data %>% 
+              filter(status == "Control" & setnum == matched_control1$setnum[2]) %>%  
+              labelled::remove_labels(status) %>%
+              mutate(setnum = 2064,
+                     status = 0)
+              )
+
+data_analysis_other_hcc1 <- data_analysis_other_hcc %>% filter(!(status == 0 & setnum == 2064)) %>% labelled::remove_labels(setnum) %>%
+  mutate(setnum = as.numeric(setnum))%>% 
+  bind_rows(data %>% 
+              filter(status == "Control" & setnum == matched_control1$setnum[2]) %>%  
+              labelled::remove_labels(status) %>%
+              mutate(setnum = 2064,
+                     status = 0)
+              )
+
+## match control for setnum 2283----
+matched_control2 <- data %>% filter(studyarea == match_info[2,]$studyarea &
+                             sex == match_info[2,]$sex &
+                             eth == match_info[2,]$eth &
+                             blood_age == match_info[2,]$blood_age &
+                             q1_byr == match_info[2,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control2$setnum %in% data_analysis_hcc$setnum)
+### setnum 2101 was in hcc data. So that control could not be used as the control for 2283. 
+
+
+## match control for setnum 2159----
+matched_control3 <- data %>% filter(studyarea == match_info[3,]$studyarea &
+                             sex == match_info[3,]$sex &
+                             eth == match_info[3,]$eth &
+                             blood_age == match_info[3,]$blood_age &
+                             q1_byr == match_info[3,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control3$setnum %in% data_analysis_hcc$setnum)
+### setnum 2159 was in hcc data. So that control could not be used as the control for 2159. 
+
+## match control for setnum 2188----
+matched_control4 <- data %>% filter(studyarea == match_info[4,]$studyarea &
+                             sex == match_info[4,]$sex &
+                             eth == match_info[4,]$eth &
+                             blood_age == match_info[4,]$blood_age &
+                             q1_byr == match_info[4,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control4$setnum %in% data_analysis_hcc$setnum)
+# no matching control
+
+## match control for setnum 1035----
+matched_control5 <- data %>% filter(studyarea == match_info[5,]$studyarea &
+                             sex == match_info[5,]$sex &
+                             eth == match_info[5,]$eth &
+                             blood_age == match_info[5,]$blood_age &
+                             q1_byr == match_info[5,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control5$setnum %in% data_analysis_hcc$setnum)
+# no matching control
+
+## match control for setnum 1899----
+matched_control6 <- data %>% filter(studyarea == match_info[6,]$studyarea &
+                             sex == match_info[6,]$sex &
+                             eth == match_info[6,]$eth &
+                             blood_age == match_info[6,]$blood_age &
+                             q1_byr == match_info[6,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control6$setnum %in% data_analysis_hcc$setnum)
+# no matching control
+
+
+## match control for setnum 2193----
+matched_control7 <- data %>% filter(studyarea == match_info[7,]$studyarea &
+                             sex == match_info[7,]$sex &
+                             eth == match_info[7,]$eth &
+                             blood_age == match_info[7,]$blood_age &
+                             q1_byr == match_info[7,]$q1_byr &
+                             status == "Control") %>% 
+  labelled::remove_labels(status) %>%
+              mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control7$setnum %in% data_analysis_hcc$setnum)
+# 2283 was already in the hcc data as control for 2283 we could not use it as control of 2193
+
+
+##NOTE: after checking these 7 missing control, only one of them can find alternative. For the following analysis, I excluded all the participants either with missing case or missing control. 
+data_analysis_hcc1 <- data_analysis_hcc %>% drop_na(prs_name)
+
+paired_setnum <- data_analysis_hcc1 %>% 
+  group_by(setnum) %>% 
+  summarise(count = n()) %>% 
+  ungroup()%>%
+  filter(count == 2)
+
+data_analysis_hcc2 <- data_analysis_hcc1 %>% 
+  filter( setnum %in% paired_setnum$setnum)
+
+
+
+data_analysis_nafld_hcc1 <- data_analysis_nafld_hcc %>% 
+  filter( setnum %in% paired_setnum$setnum)
+
+data_analysis_other_hcc1 <- data_analysis_other_hcc %>%
+  filter(setnum %in% paired_setnum$setnum)
+```
+
+
+## Analysis1. Conditional logistic regression
+**Outcome: HCC vs control**
+
+**Exposure: normalized PFAS, lg2 transformed PFAS, pfas_median(above median, below median), pfas 85pct(above 85%, below 85%))**
+
+**Covars: bmi, smoking status, alcohol intake, diabetes**
+
+**Analysis: conditional logistic regression**
+
+**Data Info: 231 cases, 231 controls**
+```{r analysis1 prs}
+## conditional logistic regression, no covars----------------------
+# create dataframe with names of dependent vars
+
+ind_vars <- tibble(exposure = colnames(data_analysis_hcc2 %>% select(contains("prs"))))
+
+# ind_vars <- tibble(exposure = colnames(data_analysis_hcc1 %>% select(contains("scld"), contains("detect"), contains("lg2"), contains("median"), contains("85pct"))))
+
+ind_vars$clogit_out_no_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+strata(setnum)")),
+          data = data_analysis_hcc2,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "No covars")) 
+
+## Conditional logistic regression, controlling for covariates ---------
+ind_vars$clogit_out_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+bmi+ alcohol_intake + smokestatus + diabetes + 
+                           # casetype + 
+                           strata(setnum)")), 
+          data = data_analysis_hcc2,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("bmi", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes"
+                        # , "casetypeNAFLD-related HCC", "casetypeOther HCC"
+                        )) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars")) 
+
+# Get final data -------------------
+all_results_df_hcc <- ind_vars %>% 
+  mutate(clogit_results_out = map2(clogit_out_no_cov, 
+                                   clogit_out_cov, 
+                                   ~bind_rows(.x, .y))) %>% 
+  unnest(clogit_results_out) %>% 
+  select(model_type,covariates, everything(), 
+         -c(clogit_out_no_cov, 
+            clogit_out_cov)) %>%
+  mutate(exposure_type = case_when(
+                                   str_detect(exposure, "prs") ~ "prs")
+         )
+
+all_results_df_hcc1 <- all_results_df_hcc %>%
+  arrange(desc(covariates))
+
+all_results_df_hcc1 %>% filter(grepl("prs", term)) %>% select(model_type, covariates, exposure_type,exposure,term, odds_ratio, exp_ci_low, exp_ci_high, p.value) %>% regulartable() %>% autofit() 
+
+# writexl::write_xlsx(all_results_df_hcc, fs::path(dir_result, "1_single_exposure_analysis_result_hcc.xlsx"))
+```
+
+## Coefficient plot of analysis 1
+```{r coefficient plot1 prs}
+### Create metabolites Coefficient Plots
+all_results_df_hcc1  %>% 
+  mutate(term = term %>% str_replace("pfas_", "") %>% str_replace("_imputed", ""),
+         term = factor(term, levels = rev(unique(term))),
+         sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         pfas = str_split_fixed(term, "_", 2)[,1],
+         covariates = factor(covariates, levels = c("No covars", "Adjusted by covars")))%>%
+  ggplot(aes(x = term,y = odds_ratio, color = sig)) +
+  geom_point(size = 1) +
+  coord_flip()+
+  geom_errorbar(aes(ymin = exp_ci_low,
+                    ymax = exp_ci_high),
+                width = 0) +
+  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+  ylab("Odds Ratio (95% CI)") +
+  facet_grid( pfas ~ covariates, space = "free", scale = "free")+
+  theme(panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.title.y=element_blank(),
+        axis.line.y = element_line(color = "black"),
+        legend.position = "right")+
+  coord_flip() +
+  scale_color_manual(values = c("grey","red"))
+
+# ggsave(filename = fs::path(dir_figures,
+#                            "Fig 1 Single Exposure Analysis HCC.jpeg"),
+#        width = 8,
+#        height = 5,
+#        bg = "white")
+```
+
+
+
+
+## Analysis2. Conditional logistic regression (NAFLD related HCC)
+**Outcome: NAFLD related HCC vs control**
+
+**Exposure: prs**
+
+**Analysis: conditional logistic regression**
+
+**Data Info: 91 cases, 91 controls**
+```{r analysis2 prs}
+## conditional logistic regression, no covars----------------------
+# create dataframe with names of dependent vars
+
+
+ind_vars$clogit_out_no_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+strata(setnum)")),
+          data = data_analysis_nafld_hcc1,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "No covars"
+           ))
+
+## Conditional logistic regression, controlling for bmi ---------
+ind_vars$clogit_out_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+bmi+ alcohol_intake + smokestatus + diabetes + strata(setnum)")), 
+          data = data_analysis_nafld_hcc1,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("bmi", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes")) %>% 
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars"))
+
+# Get final data -------------------
+all_results_df_nafld_hcc <- ind_vars %>% 
+  mutate(clogit_results_out = map2(clogit_out_no_cov, 
+                                   clogit_out_cov, 
+                                   ~bind_rows(.x, .y))) %>% 
+  unnest(clogit_results_out) %>% 
+  select(model_type,covariates, everything(), 
+         -c(clogit_out_no_cov, 
+            clogit_out_cov)) %>%
+    mutate(exposure_type = case_when(str_detect(exposure,"prs") ~ "prs"))
+
+all_results_df_nafld_hcc1 <- all_results_df_nafld_hcc %>% 
+  arrange(desc(covariates))
+
+
+all_results_df_nafld_hcc1 %>% filter(grepl("prs",term)) %>% select(model_type, covariates, exposure_type,exposure,term, odds_ratio, exp_ci_low, exp_ci_high, p.value) %>% regulartable() %>% autofit() 
+
+# writexl::write_xlsx(all_results_df_nafld_hcc, fs::path(dir_result, "1_single_exposure_analysis_result_nafld_hcc.xlsx"))
+```
+
+## Coefficient plot of analysis 2
+```{r coefficient plot2 prs}
+### Create metabolites Coefficient Plots
+all_results_df_nafld_hcc1  %>% 
+  mutate(term = term%>% str_replace("pfas_", "") %>% str_replace("_imputed", ""),
+         term = factor(term, levels = rev(unique(term))),
+         sig = case_when(
+                          p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         pfas = str_split_fixed(term, "_", 2)[,1],
+         covariates = factor(covariates, levels = c("No covars", "Adjusted by covars")))%>%
+  ggplot(aes(x = factor(term, levels = ),y = odds_ratio, color = sig)) +
+  geom_point(size = 1) +
+  coord_flip()+
+  geom_errorbar(aes(ymin = exp_ci_low,
+                    ymax = exp_ci_high),
+                width = 0) +
+  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+  ylab("Odds Ratio (95% CI)") +
+  facet_grid( pfas~covariates, space = "free", scale = "free")+
+  theme(panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.title.y=element_blank(),
+        axis.line.y = element_line(color = "black"),
+        legend.position = "none")+
+  coord_flip() +
+  scale_color_manual(values = c("grey", "red"))
+
+# ggsave(filename = fs::path(dir_figures,
+#                            "Fig 1 Single Exposure Analysis NAFLD HCC.jpeg"),
+#        width = 8,
+#        height = 5,
+#        bg = "white")
+```
+
+
+## Analysis3. Conditional logistic regression (Other HCC)
+**Outcome: Other HCC vs control**
+
+**Exposure: prs**
+
+**Analysis: conditional logistic regression**
+
+**Data Info: 143 cases, 143 controls**
+```{r analysis3 prs}
+## conditional logistic regression, no covars----------------------
+# create dataframe with names of dependent vars
+
+ind_vars$clogit_out_no_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+strata(setnum)")),
+          data = data_analysis_other_hcc1,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "No covars")) 
+
+## Conditional logistic regression, controlling for bmi ---------
+ind_vars$clogit_out_cov <- map(
+  ind_vars$exposure, 
+  ~clogit(as.formula(paste("status ~", ., "+bmi+ alcohol_intake + smokestatus + diabetes + strata(setnum)")), 
+          data = data_analysis_other_hcc1,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("bmi", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes")) %>% 
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars")) 
+
+# Get final data -------------------
+all_results_df_other_hcc <- ind_vars %>% 
+  mutate(clogit_results_out = map2(clogit_out_no_cov, 
+                                   clogit_out_cov, 
+                                   ~bind_rows(.x, .y))) %>% 
+  unnest(clogit_results_out) %>% 
+  select(model_type,covariates, everything(), 
+         -c(clogit_out_no_cov, 
+            clogit_out_cov))%>%
+    mutate(exposure_type = case_when(str_detect(exposure,"prs") ~ "prs"))
+
+all_results_df_other_hcc1 <- all_results_df_other_hcc %>% 
+  arrange(desc(covariates))
+
+all_results_df_other_hcc1 %>% filter(grepl("prs",term)) %>% select(model_type, covariates, exposure_type,exposure, term, odds_ratio, exp_ci_low, exp_ci_high, p.value) %>% regulartable() %>% autofit() 
+
+# writexl::write_xlsx(all_results_df_other_hcc, fs::path(dir_result, "1_single_exposure_analysis_result_other_hcc.xlsx"))
+```
+
+## Coefficient plot of analysis 3
+```{r coefficient plot3 prs}
+### Create metabolites Coefficient Plots
+all_results_df_other_hcc1  %>% 
+  mutate(term = term %>% str_replace("pfas_", "") %>% str_replace("_imputed", ""),
+         term = factor(term, levels = rev(unique(term))),
+         sig = case_when(
+                          p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         pfas = str_split_fixed(term, "_", 2)[,1],
+         covariates = factor(covariates, levels = c("No covars", "Adjusted by covars")))%>%
+  ggplot(aes(x = term,y = odds_ratio, color = sig)) +
+  geom_point(size = 1) +
+  coord_flip()+
+  geom_errorbar(aes(ymin = exp_ci_low,
+                    ymax = exp_ci_high),
+                width = 0) +
+  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+  ylab("Odds Ratio (95% CI)") +
+  facet_grid( pfas~covariates, space = "free", scale = "free")+
+  theme(panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.title.y=element_blank(),
+        axis.line.y = element_line(color = "black"),
+        legend.position = "none")+
+  coord_flip() +
+  scale_color_manual(values = c("grey", "red", "purple"))
+
+# ggsave(filename = fs::path(dir_figures,
+#                            "Fig 1 Single Exposure Analysis other HCC.jpeg"),
+#        width = 8,
+#        height = 5,
+#        bg = "white")
+```
+
+
+## Analysis4. Comparison of CLR with spline and CLR
+**Outcome: HCC vs control**
+
+**Exposure: prs**
+
+**Analysis: conditional logistic regression with or without spline term**
+
+**Data Info: 231 cases, 231 controls**
+```{r Comparison of CLR with spline and CLR}
+# create dataframe with names of dependent vars
+# ind_vars1 <- tibble(exposure = colnames(data_analysis1 %>% select(contains("scld"), contains("detect"), contains("lg2"), contains("median"), contains("85pct"))))
+
+ind_vars1 <- tibble(exposure = colnames(data_analysis_hcc1 %>% select(prs_uw, prs_wt)))
+
+## Without covs ----------------------
+ind_vars1 <- ind_vars1 %>% 
+   mutate(clogit_mod_full = map(exposure, 
+                                ~clogit(
+                                  as.formula(
+                                    paste0("status~pspline(",.,
+                                           ",df=2,degree=1)+
+                                               strata(setnum)")),
+                                  data = data_analysis_hcc2, 
+                                  method = "efron"
+                                )), 
+          clogit_mod_null = map(exposure, 
+                                ~clogit(
+                                  as.formula(paste0("status~",.,"+strata(setnum)")),
+                                  data = data_analysis_hcc2, 
+                                  method = "efron")), 
+          anova = map2(clogit_mod_full, clogit_mod_null, 
+                       ~anova(.x, .y)))
+
+ind_vars1$anova[[1]] # model comparison result: pfoa
+anova(ind_vars1$clogit_mod_full[[1]]) 
+anova(ind_vars1$clogit_mod_full[[2]]) 
+
+
+ind_vars1$clogit_out_no_cov <- map(
+  ind_vars1$clogit_mod_full, 
+  ~termplot(., term=1, se=TRUE, plot = FALSE) %>%
+    as.data.frame() %>% 
+    janitor::clean_names() %>%
+    rename_all(~case_when(str_detect(., "_x") ~ "x", 
+                          str_detect(., "_y") ~ "y",
+                          str_detect(., "_se") ~ "se")) %>%
+    as_tibble())
+
+# Get final data 
+clogit_results_df_no_cov <- ind_vars1 %>%
+  unnest(clogit_out_no_cov) %>%
+  mutate(est_low = y-(1.96*se),
+         est_high = y+(1.96*se)) %>%
+  mutate(covariates = "none")
+
+# Add in percentile information -------------------------
+# Calculate 90th percentile
+(percentile_85 <- data_analysis_hcc2 %>% 
+   select(prs_uw,prs_wt) %>% 
+   pivot_longer(cols = everything()) %>% 
+   group_by(name) %>% 
+   summarise(pct_85 = quantile(value, 0.85, na.rm = TRUE)))
+
+#Merge percentiles with data
+clogit_results_df_no_cov_final <- clogit_results_df_no_cov %>% 
+  tidylog::left_join(percentile_85, by = c("exposure" = "name")) %>% 
+  mutate(
+    # exposure = fct_relevel(exposure, "pfos", "pfhxs", "pfoa",
+    #                             "pfna", "pfuda", "pfda"), 
+         sig = if_else(est_low > 0 | est_high < 0, 
+                       "sig", 
+                       "not_sig")) 
+```
+
+## Spline plot-Fixed y axis
+```{r spline plot}
+## Plot -----------------------------------
+(spline_fig <- ggplot(clogit_results_df_no_cov_final,
+                      aes(x = x,
+                          y = y)) + 
+    geom_hline(yintercept = 0, color = "grey60", linetype = 3) + 
+    geom_vline(aes(xintercept = pct_85), color = "red", linetype = 3) +
+    geom_line() + 
+    geom_line(aes(y = est_high), 
+              linetype = 2) +
+    geom_line(aes(y = est_low), 
+              linetype = 2) +
+    theme(plot.margin = unit(c(0,0,0,0), "cm")) +
+    xlab("PFAS Concentration") + 
+    ylab("Log odds") +
+    facet_wrap(~exposure, scales = "free_x"))
+```
+
+## Spline plot with free scales
+```{r spline plot 2}
+
+(spline_fig <- ggplot(clogit_results_df_no_cov_final,
+                      aes(x = x,
+                          y = y)) + 
+    geom_hline(yintercept = 0, color = "grey60", linetype = 3) + 
+    geom_vline(aes(xintercept = pct_85), color = "red", linetype = 3) +
+    geom_line() + 
+    geom_line(aes(y = est_high), 
+              linetype = 2) +
+    geom_line(aes(y = est_low), 
+              linetype = 2) +
+    theme(plot.margin = unit(c(0,0,0,0), "cm")) +
+    xlab("PFAS Concentration") + 
+    ylab("Log odds") +
+    facet_wrap(~exposure, scales = "free"))
+```
+
+## Spline plot with <85pct data
+```{r spline plot 3}
+(spline_fig <- ggplot(clogit_results_df_no_cov_final %>% filter(x < pct_85),
+                      aes(x = x,
+                          y = y)) + 
+    geom_hline(yintercept = 0, color = "grey60", linetype = 3) + 
+    geom_vline(aes(xintercept = pct_85), color = "red", linetype = 3) +
+    geom_line() + 
+    geom_line(aes(y = est_high), 
+              linetype = 2) +
+    geom_line(aes(y = est_low), 
+              linetype = 2) +
+    theme(plot.margin = unit(c(0,0,0,0), "cm")) +
+    xlab("PFAS Concentration") + 
+    ylab("Log odds") +
+    facet_wrap(~exposure, scales = "free_x"))
+
+# Save Figure
+# ggsave(spline_fig, filename = fs::path(dir_figures,
+#                                        "1_PFAS Splines fig.jpeg"),
+#        height = 6, width = 8)
+```
+

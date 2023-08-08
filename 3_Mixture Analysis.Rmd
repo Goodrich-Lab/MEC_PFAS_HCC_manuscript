@@ -1,0 +1,390 @@
+---
+title: 'MEC analysis'
+subtitle: "Single Exposure Analysis- HCC"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r mixture analysis setup, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+source(fs::path(here::here("g_prior_sel_logistic_fun.R")))
+```
+
+```{r mixture analysis load data}
+data <- readRDS(fs::path(
+          dir_cleaned_data,
+          "p27_hhear_pfas_covar_diet_prs_V1.RDS"))
+
+pfas_name <- c("pfas_pfda_imputed","pfas_pfos_imputed","pfas_pfhpa_imputed",
+               "pfas_pfhxs_imputed","pfas_pfhps_imputed","pfas_pfna_imputed",
+               "pfas_pfoa_imputed","pfas_pfuda_imputed",
+               "pfas_pfds_detect", "pfas_pfpes_detect",
+               "pfas_pftrda_detect")
+```
+
+
+## Data preparation
+
+1) HCC data: sample size 240
+2) NAFLD-related  HCC data : sample size 97 
+3) other  HCC data : sample size 143 
+
+```{r 3 hcc data preparation}
+sample_id1 <- data %>% filter(status == "HCC") %>% select(setnum)
+sample_id2 <- data %>% filter(casetype == "NAFLD-related HCC") %>% select(setnum)
+sample_id3 <- data %>% filter(casetype == "Other HCC") %>% select(setnum)
+
+data1 <- data %>% 
+  # mutate_at(.vars = pfas_name[1:8],
+  #           .funs = list(lg2 = ~log2(.), 
+  #                        median = ~ifelse(. < quantile(., 0.5, na.rm = TRUE), 0, 1),
+  #                        `85pct` = ~ifelse(. < quantile(., 0.85, na.rm = TRUE), 0, 1))) %>%
+  mutate(status = ifelse(status== "Control", 0, 1)) %>%
+  mutate_at(.vars = c("pfas_pfds_detect", "pfas_pfpes_detect", "pfas_pftrda_detect"),
+            .funs = ~factor(., levels = c("non_detected", "detected")))
+
+data_analysis1 <- data1 %>% filter(setnum %in% sample_id1$setnum)
+data_analysis2 <- data1 %>% filter(setnum %in% sample_id2$setnum)
+data_analysis3 <- data1 %>% filter(setnum %in% sample_id3$setnum)
+```
+
+## Missing data checking
+```{r missing control data included}
+missing <- data_analysis1 %>% filter((is.na(pfas_pfda)|is.na(pfas_pfos)|is.na(pfas_pfhpa)|is.na(pfas_pfhxs)|is.na(pfas_pfhps)|is.na(pfas_pfna)|is.na(pfas_pfoa)|is.na(pfas_pfuda)|is.na(pfas_pfds)|is.na(pfas_pfpes)|is.na(pfas_pftrda)) & status == 0)
+
+match_info <- data_analysis1 %>% filter(setnum == missing$setnum & status == 1)
+
+matched_control <- data1 %>% filter(studyarea == match_info$studyarea &
+                             sex == match_info$sex &
+                             eth == match_info$eth &
+                             blood_age == match_info$blood_age &
+                             q1_byr == match_info$q1_byr &
+                             status == 0) %>% 
+  labelled::remove_labels(status)%>%
+  mutate(status = 0)
+
+## checking if setnum in hcc data
+(matched_control$setnum[4] %in% data_analysis1$setnum)
+### setnum 1696 was not in hcc data. Replace the missing control of 1297 with control 1696
+
+data_analysis_hcc <- data_analysis1 %>% filter(!(status == 0 & setnum == 1297)) %>% labelled::remove_labels(setnum) %>%
+  mutate(setnum = as.numeric(setnum))%>% 
+  bind_rows(data1 %>% 
+              filter(status == 0 & setnum == matched_control$setnum[4]) %>%  
+              labelled::remove_labels(status) %>%
+              mutate(setnum = 1297,
+                     status = 0)
+              )
+
+data_analysis_other_hcc <- data_analysis3 %>% filter(!(status == 0 & setnum == 1297)) %>% labelled::remove_labels(setnum) %>%
+  mutate(setnum = as.numeric(setnum))%>% 
+  bind_rows(data1 %>% 
+              filter(status == 0 & setnum == matched_control$setnum[4]) %>%  
+              labelled::remove_labels(status) %>%
+              mutate(setnum = 1297,
+                     status = 0)
+              )
+```
+
+## Mixture Analysis - qgcomp
+```{r qgcomp}
+# qgcomp
+# Set covars and name of exposure
+
+qgcompout <- qgcomp.noboot(as.formula(paste("status~(",
+                                             str_c(pfas_name[1:8], collapse = "+"),
+                                             ")+blood_age+sex+eth+studyarea")),
+                            expnms=pfas_name[1:8], 
+                            data = data_analysis_hcc, 
+                            family=binomial(), 
+                            q=4)
+summary(qgcompout)
+```
+
+## Plot for qgcomp results(Weighted plot and coefficient plot)
+```{r plot of qgcomp}
+plot(qgcompout, cex = 1)
+
+### coefficient plot----
+coef <- data.frame(qgcompout$fit$coefficients) %>% 
+  rownames_to_column("Predictor") %>%
+  filter(Predictor %in% pfas_name[1:8]) %>%
+  rename('Log Odds Ratio' = qgcompout.fit.coefficients) %>%
+  mutate(direction = ifelse(`Log Odds Ratio` > 0, "pos", "neg"),
+         direction = factor(direction, levels = c("pos", "neg")))
+
+# change the name of the predictor
+coef1 <- coef %>% mutate(Predictor = case_when(
+  grepl("pfda", Predictor) ~ "PFDA",
+  grepl("pfos", Predictor) ~ "PFOS",
+  grepl("pfna", Predictor) ~ "PFNA",
+  grepl("pfhxs", Predictor) ~"PFHxS",
+  grepl("pfoa", Predictor) ~ "PFOA",
+  grepl("pfhps", Predictor) ~ "PFHpS",
+  grepl("pfhpa", Predictor) ~ "PFHpA",
+  grepl("pfuda", Predictor) ~ "PFUdA"
+))
+
+p <- ggplot(coef1,aes(fct_reorder(Predictor, `Log Odds Ratio`), `Log Odds Ratio`,
+                      fill = direction)) + 
+  geom_bar(stat = "identity", show.legend = FALSE) + 
+  ggtitle("Coefficient plot(Mixture Analysis)") +
+  coord_flip() +
+  geom_hline(yintercept = 0, linetype = 2, color = "black") +
+  geom_text(aes(label = round(`Log Odds Ratio`,2)), hjust= -0.05) +
+  theme(axis.text = element_text(size = 15),
+        text = element_text(size = 15),
+        axis.title.y = element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(color = "black"),
+        panel.background = element_rect(fill="white"),
+        strip.background = element_rect(fill = "white")
+        )
+
+p
+```
+
+## Mixture analysis - Weighted quantile sum regression(gwqs) 
+```{r gwqs}
+results <- gWQS::gwqs(status ~ wqs + blood_age + sex + eth + studyarea, 
+                     mix_name = pfas_name[1:8], 
+                     data = data_analysis_hcc, 
+                     q = 4, validation =  0, b = 1000, b1_pos = TRUE, 
+                     b1_constr = FALSE, family = "binomial", seed = 2016)
+
+wqsr_results_unnested <- cbind(summary(results)$coefficients, 
+                                    confint(results)) %>% 
+                               as_tibble(rownames = "term")%>% 
+  bind_rows(.id = "exposure_group") %>% 
+  janitor::clean_names()
+
+# Modify results, get effect estimates
+(gwqs_results <- wqsr_results_unnested %>% 
+  filter(term=="wqs") %>% 
+  mutate(odds_ci = jag2::effest_ci(eff_est = exp(estimate), 
+                             lcl = exp(x2_5_percent),
+                             ucl = exp(x97_5_percent))) %>% 
+  select(exposure_group, odds_ci, pr_z, everything()))
+```
+
+## Mixture analysis - BKMR
+```{r bkmr}
+set.seed(1000)
+## Drop na
+data_analysis_hcc_bkmr <- data_analysis_hcc %>% drop_na(pfas_name[1:7], prs_wt) #464
+
+## filter paired setnums
+paired_setnum <- data_analysis_hcc_bkmr%>%
+  group_by(setnum) %>%
+  summarise(count = n()) %>%
+  ungroup()%>%
+  filter(count == 2)
+ 
+data_analysis_hcc_bkmr1 <- data_analysis_hcc_bkmr %>%
+  filter(setnum %in% paired_setnum$setnum) #448
+
+## log2 transform and scaled data
+data_analysis_hcc_bkmr2 <- data_analysis_hcc_bkmr1 %>% 
+  mutate_at(.vars = pfas_name[1:8],
+            .funs = list(scld = ~scale(.),
+                         lg2 = ~log2(.))) %>%
+  mutate_at(.vars = c(paste0(pfas_name[1:8], "_lg2"), "prs_wt", "prs_uw"),
+            .funs = list(scld = ~scale(.))) 
+## rename columns
+data_analysis_hcc_bkmr3 <- data_analysis_hcc_bkmr2 %>%
+  rename_with(str_replace,
+              pattern= "pfas_",
+              replacement = "") %>%
+  rename_with(str_replace,
+              pattern= "imputed_",
+              replacement = "")
+
+# Analysis
+mixture<- as.matrix(data_analysis_hcc_bkmr3 %>% 
+                      select(contains("lg2_scld"), prs_wt_scld)) 
+  
+
+outcome<- data_analysis_hcc_bkmr3$status
+
+covariates<- data_analysis_hcc_bkmr3 %>% 
+  select(blood_age, sex, eth, studyarea) %>% 
+  fastDummies::dummy_cols(select_columns = c("sex", "eth", "studyarea"),
+                          remove_first_dummy = TRUE,
+                          remove_selected_columns = TRUE)
+
+fitkm <- kmbayes(y = outcome, 
+                 Z = mixture,
+                 X = covariates,  
+                 iter = 10000, 
+                 verbose = FALSE, 
+                 varsel = TRUE)
+
+ExtractPIPs(fitkm)
+```
+
+### Result: checking the convergence of the parameters
+```{r check the convergence of parameters}
+TracePlot(fit = fitkm, par = "beta")
+TracePlot(fit = fitkm, par = "sigsq.eps")
+TracePlot(fit = fitkm, par = "r", comp = 1)
+```
+
+### Univariate dose-response
+**Relationship between each exposure and outcome where all the other exposures are fixed to a particular percentile (median)**
+
+```{r unvivariate dose-response}
+pred.resp.univar <- PredictorResponseUnivar(fit=fitkm,
+                                            method="approx")
+                                            
+ggplot(pred.resp.univar, aes(z, est, ymin = est - 1.96*se, 
+                             ymax = est + 1.96*se)) + 
+  geom_smooth(stat = "identity") + ylab("h(z)") + facet_wrap(~ variable, scales = "free")
+```
+
+### Bivariable Exposure-response 
+```{r bivariable exposure-response}
+pred.resp.bivar  <- PredictorResponseBivar(fit=fitkm,
+                                           min.plot.dist = 1,
+                                           method="approx")
+                                           
+ggplot(pred.resp.bivar, aes(z1, z2, fill = est)) + 
+  geom_raster() + 
+  facet_grid(variable2 ~ variable1, scales = "free") +
+  scale_fill_gradientn(colours=c("#0000FFFF","#FFFFFFFF","#FF0000FF")) +
+  xlab("expos1") +
+  ylab("expos2") +
+  ggtitle("h(expos1, expos2)")
+```
+
+
+### Interactions
+**investigate the predictor-response function of a single predictor for the second predictor fixed at various quantiles. In this study 25th, 50th and 75th were chosen**
+
+**Interpretation: when a change in the dose-response curve of one component at a different quartile of another component, it indicates the presence of interaction while if the dose-response curves are parallel, it suggests no interaction between the two components in the mixtures **
+
+```{r interaction}
+pred.resp.bivar.levels <-
+  PredictorResponseBivarLevels(pred.resp.df= 
+                                 pred.resp.bivar,
+                               Z = mixture, 
+                               both_pairs=TRUE,
+                               qs = c(0.25, 0.5, 0.75))
+                               
+ggplot(pred.resp.bivar.levels, aes(z1, est)) + 
+  geom_smooth(aes(col = quantile), stat = "identity") + 
+ facet_grid(variable2 ~ variable1,scales = "free") +
+  ggtitle("h(expos1 | quantiles of expos2)") +
+ xlab("expos1")
+
+ggplot(pred.resp.bivar.levels %>% filter(variable1 == "pfhpa_lg2_scld"& variable2 == "prs_wt_scld"), aes(z1, est))+ 
+  geom_smooth(aes(col = quantile), stat = "identity") + 
+ facet_grid(variable2 ~ variable1,scales = "free") +
+  ggtitle("h(expos1 | quantiles of expos2)") +
+ xlab("expos1")
+```
+
+### overall mixture effect
+**Compare the expected change in the outcome when the component in the mixture were set at each 5th percentile from the 25th to 75th**
+
+```{r overall mixture effect}
+risks.overall <- OverallRiskSummaries(fit=fitkm, 
+                                      qs=seq(0.25, 0.75, by=0.05), 
+                                      q.fixed = 0.5, 
+                                      method = "approx")
+                                      
+ggplot(risks.overall, aes(quantile, est, ymin = est - 1.96*sd, 
+                          ymax = est + 1.96*sd)) +  
+  geom_hline(yintercept=00, linetype="dashed", color="gray") + 
+  geom_pointrange() + scale_y_continuous(name="estimate") 
+```
+
+
+### single varibles effects
+```{r single variables effects}
+risks.singvar <- SingVarRiskSummaries(fit=fitkm, 
+                                      qs.diff = c(0.25, 0.75),
+                                      q.fixed = c(0.25, 0.50, 0.75), 
+                                      method = "approx")
+                                      
+ggplot(risks.singvar, aes(variable, est, ymin = est - 1.96*sd,  
+                          ymax = est + 1.96*sd, col = q.fixed)) + 
+       geom_hline(aes(yintercept=0), linetype="dashed", color="gray") +  
+       geom_pointrange(position = position_dodge(width = 0.75)) +
+       coord_flip() + theme(legend.position="none")+scale_x_discrete(name="") +
+       scale_y_continuous(name="estimate") 
+```
+
+### single variable interaction terms
+```{r single variable interaction terms}
+risks.int <- SingVarIntSummaries(fit=fitkm, 
+                                 qs.diff = c(0.25, 0.75),
+                                 qs.fixed = c(0.25, 0.75))
+                                 
+ggplot(risks.int, aes(variable, est, ymin = est - 1.96*sd, 
+                      ymax = est + 1.96*sd)) + 
+  geom_pointrange(position = position_dodge(width = 0.75)) + 
+  geom_hline(yintercept = 0, lty = 2, col = "brown") + coord_flip()
+```
+
+## Mixture analysis - gprior
+```{r gprior}
+# # Set up data ------------------------------
+# # Create dummy vars for ethnicity
+# data_analysis_hcc <- fastDummies::dummy_cols(data_analysis_hcc, select_columns = c("sex", "eth", "studyarea"))
+# 
+# # Set covars and name of exposure
+# covars <- c("blood_age", "sex_Female","studyarea_California",
+#             "eth_African American", "eth_Japanese American", "eth_Latino", "eth_Native Hawaiian")
+# 
+# # Set datasets for analysis
+# # X observations
+# X <- data_analysis_hcc %>%  
+#   dplyr::select(all_of(
+# pfas_name_scld)) 
+# 
+# # Outcome
+# Y = data_analysis_hcc$status
+# 
+# # Covariates (numeric only)
+# U = data_analysis_hcc %>% select(all_of(covars))
+# 
+# SETNUM = data_analysis_hcc$setnum
+# 
+# # Call Function -----------------------------------
+# gprior_output <- g.prior.sel.logistic(X = X, Y=Y, U=U, SETNUM = SETNUM)
+# 
+# # mutate output
+# gprior_results_df <- bind_rows(gprior_output, 
+#                                .id = "exposures") %>% 
+#   janitor::clean_names() %>%
+#   mutate(odds_ratio = exp(mean), 
+#          odds_ratio_lcl = exp(x2_5),
+#          odds_ratio_ucl = exp(x97_5)) %>% 
+#   rename(log_odds = mean, 
+#          conf_low  = x2_5,
+#          conf_high = x97_5) %>% 
+#   remove_rownames() %>% 
+#   mutate(odds_ci = effest_ci(eff_est = odds_ratio,
+#                              odds_ratio_lcl,
+#                              odds_ratio_ucl))
+# 
+# 
+# 
+# # Save RDS
+# write_csv(gprior_results_df, 
+#           fs::path(dir_results, 
+#                    "g prior with selection legacy PFAS mixture.csv"))
+```
+

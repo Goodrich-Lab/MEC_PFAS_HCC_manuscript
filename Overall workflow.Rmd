@@ -1,0 +1,50 @@
+---
+title: 'MEC Analysis'
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+---
+<style type="text/css">
+  body{
+  font-size: 12pt;
+}
+</style>
+
+```{r overall setup, include=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+```
+
+# 1. Data Description
+```{r child="1_Data Description.Rmd"}
+
+```
+
+# 2.1. Single Exposure Analysis
+```{r child="2_Single Exposure Analysis.Rmd"}
+
+```
+
+# 2.2 Association of PRS with outcome
+```{r child="2_Single Exposure Analysis_PRS.Rmd"}
+
+```
+
+# 3. Mixture Analysis
+```{r child="3_Mixture Analysis.Rmd"}
+
+```
+
+# 4. Lucid Analysis
+```{r child="4_LUCID analysis.Rmd"}
+
+```
+
