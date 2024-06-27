@@ -1,0 +1,278 @@
+---
+title: 'MEC analysis'
+subtitle: "Final Analysis"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup PRS, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!load_data.R")))
+```
+
+
+## Analysis1: Categorical PRS and HCC
+* conditional logistic regression
+* unweighted PRS
+```{r prs and hcc}
+res <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+          data = data_hcc,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6"
+                        # , "casetypeNAFLD-related HCC", "casetypeOther HCC"
+                        )) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars",
+           type = "All Races")
+
+eth_categories <- levels(data_hcc$eth)
+
+for(race in eth_categories[3:4]) {
+  res_temp <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+          data = data_hcc %>% filter(eth == race),
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6")) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars",
+           type = race)
+  res <- res %>% bind_rows(res_temp)
+}
+
+```
+
+### Fig 2a. prs and hcc- HCC
+```{r prs and hcc plot}
+intercept_data<- tibble(term = rep("prs_uw_tertile1", 3),
+                        odds_ratio = rep(1, 3),
+                        type = c("All Races", "Japanese American", "Latino"))
+
+all_results_df_hcc2 <- res |> 
+  bind_rows(intercept_data)%>%
+  mutate(
+         genetic_risk = case_when(str_detect(term, "tertile3") ~ "High", 
+                                  str_detect(term, "tertile2") ~ "Medium",
+                                  TRUE ~ "Low") |>
+           fct_relevel(c("Low", "Medium", "High")), 
+         sig = if_else(p.value < 0.05, "Sig.", "Not Sig.")) |>
+  mutate(color = case_when( p.value < 0.05 ~ "red", 
+                            TRUE ~ "grey60"))
+
+(grs_plot <- ggplot(all_results_df_hcc2, 
+       aes(x = genetic_risk, y = odds_ratio, color = color)) +
+  geom_errorbar(aes(ymin = exp_ci_low, ymax = exp_ci_high),
+                width = 0, position = position_dodge(width = 1)) +
+  geom_point(size = 1, position = position_dodge(width = 1)) + 
+  geom_hline(yintercept = 1, linetype = 1, color = "grey50") +
+  facet_wrap(.~type, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+        legend.position = "none",
+        panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(color = "black")) +
+      ylab("Odds Ratio (95% CI)") + 
+  xlab("NAFLD PRS Tertile") +
+  # scale_y_continuous(breaks = c(1,3,5,7)) +
+  scale_color_manual(values = c("black", "red")))
+
+ggsave(grs_plot, filename = fs::path(dir_figures,
+                           "Fig 2a PRS and HCC.jpeg"),
+       width = 4,
+       height = 2,
+       bg = "white")
+
+```
+
+
+## Analysis2: Categorical PRS and NAFLD related HCC
+* conditional logistic regression
+* unweighted PRS
+```{r prs and nafld hcc}
+res_nafld <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+          data = data_nafld_hcc,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6"
+                        # , "casetypeNAFLD-related HCC", "casetypeOther HCC"
+                        )) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars",
+           type = "All Races")
+
+# for(race in eth_categories[3:4]) {
+#   res_temp <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+#           data = data_nafld_hcc %>% filter(eth == race),
+#           method = "efron", robust = TRUE) %>%
+#     tidy(., conf.int = TRUE, level = 0.95) %>% 
+#     filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6")) %>% 
+#     mutate(
+#            odds_ratio = exp(estimate),
+#            exp_ci_low = exp(conf.low),
+#            exp_ci_high = exp(conf.high),
+#            model_type = "clogit", 
+#            covariates = "Adjusted by covars",
+#            type = race)
+#   res_nafld <- res_nafld %>% bind_rows(res_temp)
+# }
+# This part doesn't work because of sample size
+```
+
+### Fig 2b. prs and hcc- NAFLD realted HCC
+```{r prs and nafld related hcc plot}
+intercept_data<- tibble(term = rep("prs_uw_tertile1", 3),
+                        odds_ratio = rep(1, 3),
+                        type = c("All Races", "Japanese American", "Latino"))
+
+all_results_df_nafld_hcc2 <- res_nafld |> 
+  bind_rows(intercept_data) %>%
+  mutate(
+         genetic_risk = case_when(str_detect(term, "tertile3") ~ "High", 
+                                  str_detect(term, "tertile2") ~ "Medium",
+                                  TRUE ~ "Low") |>
+           fct_relevel(c("Low", "Medium", "High")), 
+         sig = if_else(p.value < 0.05, "Sig.", "Not Sig.")) |>
+  mutate(color = case_when( p.value < 0.05 ~ "red", 
+                            TRUE ~ "grey60"))
+
+(grs_plot <- ggplot(all_results_df_nafld_hcc2, 
+       aes(x = genetic_risk, y = odds_ratio, color = color)) +
+  geom_errorbar(aes(ymin = exp_ci_low, ymax = exp_ci_high),
+                width = 0, position = position_dodge(width = 1)) +
+  geom_point(size = 1, position = position_dodge(width = 1)) + 
+  geom_hline(yintercept = 1, linetype = 1, color = "grey50") +
+  # facet_wrap(.~type, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+        legend.position = "none",
+        panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(color = "black")) +
+      ylab("Odds Ratio (95% CI)") + 
+  xlab("NAFLD PRS Tertile") +
+  scale_color_manual(values = c("black", "red")))
+
+ggsave(grs_plot, filename = fs::path(dir_figures,
+                           "Fig 2b PRS and NAFLD related HCC.jpeg"),
+       width = 2.5,
+       height = 2.5,
+       bg = "white")
+
+```
+
+## Analysis3: Categorical PRS and other HCC
+* conditional logistic regression
+* unweighted tertiled PRS
+```{r prs and other hcc}
+res_other <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+          data = data_other_hcc,
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6"
+                        # , "casetypeNAFLD-related HCC", "casetypeOther HCC"
+                        )) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars",
+           type = "All Races")
+
+for(race in eth_categories[3:4]) {
+  res_temp <- clogit(as.formula(paste("status ~ prs_uw_tertile +scale(bmi)+ alcohol_intake + smokestatus + diabetes + strata(setnum) + v1 + v2 + v3 + v4 + v5 + v6")), 
+          data = data_other_hcc %>% filter(eth == race),
+          method = "efron", robust = TRUE) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    filter(!term %in% c("scale(bmi)", "alcohol_intake", "smokestatusCurrent", "smokestatusFormer", "diabetesYes", "v1", "v2", "v3", "v4", "v5", "v6")) %>% 
+    mutate(
+           odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf.low),
+           exp_ci_high = exp(conf.high),
+           model_type = "clogit", 
+           covariates = "Adjusted by covars",
+           type = race)
+  res_other <- res_other %>% bind_rows(res_temp)
+}
+```
+
+### Fig 2c. prs and hcc- other HCC
+```{r prs and other hcc plot}
+
+intercept_data<- tibble(term = rep("prs_uw_tertile1", 3),
+                        odds_ratio = rep(1, 3),
+                        type = c("All Races", "Japanese American", "Latino"))
+
+all_results_df_other_hcc2 <- res_other |> 
+  bind_rows(intercept_data) |>
+  mutate(
+         genetic_risk = case_when(str_detect(term, "tertile3") ~ "High", 
+                                  str_detect(term, "tertile2") ~ "Medium",
+                                  TRUE ~ "Low") |>
+           fct_relevel(c("Low", "Medium", "High")), 
+         sig = if_else(p.value < 0.05, "Sig.", "Not Sig.")) |>
+  mutate(color = case_when( p.value < 0.05 ~ "red", 
+                            TRUE ~ "grey60"))
+
+(grs_plot <- ggplot(all_results_df_other_hcc2, 
+       aes(x = genetic_risk, y = odds_ratio, color = color)) +
+  geom_errorbar(aes(ymin = exp_ci_low, ymax = exp_ci_high),
+                width = 0, position = position_dodge(width = 1)) +
+  geom_point(size = 1, position = position_dodge(width = 1)) + 
+  geom_hline(yintercept = 1, linetype = 1, color = "grey50") +
+  facet_wrap(.~type, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+        legend.position = "none",
+        panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 10),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(color = "black")) +
+      ylab("Odds Ratio (95% CI)") + 
+  xlab("NAFLD PRS Tertile") +
+  # scale_y_continuous(breaks = c(1,3,5,7)) +
+  scale_color_manual(values = c("black", "red")))
+
+ggsave(grs_plot, filename = fs::path(dir_figures,
+                           "Fig 2c PRS and other HCC.jpeg"),
+       width = 5,
+       height = 3,
+       bg = "white")
+
+```

@@ -1,0 +1,109 @@
+---
+title: 'MEC analysis'
+subtitle: "Final Analysis"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r data processing setup, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!load_data.R")))
+```
+
+## Distribution of the PFAS (raw values)
+```{r distribution of the PFAS}
+data1 <- data %>% 
+  mutate_at(.vars = pfas_name,
+         .funs = ~exp(.))
+
+data_l <- data1 %>% select(pfas_name) %>%
+  pivot_longer(cols = pfas_name)
+
+data_l %>% ggplot(aes(x = value )) +
+  geom_histogram() +
+  facet_wrap(.~name, scale = "free", nrow = 4)
+```
+
+## Distribution of the PFAS (lg2 transformed)
+```{r distribution of the PFAS lg2}
+
+data_l <- data %>% select(pfas_name) %>%
+  pivot_longer(cols = pfas_name)
+
+data_l %>% ggplot(aes(x = value )) +
+  geom_histogram() +
+  facet_wrap(.~name, scale = "free", nrow = 4)
+```
+
+## Data summary {.tabset}
+### Data summary for overall HCC data
+```{r pfas summary for hcc data only after adding missing, results = 'asis'}
+table1::table1(~.|status, data_hcc %>% select(status, all_of(pfas_name), blood_age, bmi_cat, alcohol_intake_cat,smokestatus, diabetes, eth, studyarea, sex, year_between))
+```
+
+### Data summary for NAFLD related HCC data
+```{r pfas summary for NAFLD related HCC data after adding missing}
+table1::table1(~.|status, data_nafld_hcc  %>%select(status, pfas_name, blood_age, bmi_cat, alcohol_intake_cat,smokestatus, diabetes, eth, studyarea, sex, year_between))
+
+```
+
+### Data summary for other HCC data
+```{r pfas summary for other HCC after adding missing}
+table1::table1(~.|status, data_other_hcc  %>%select(status, pfas_name, blood_age, bmi_cat, alcohol_intake_cat,smokestatus, diabetes,eth, studyarea, sex, year_between))
+```
+
+### Data summary for overall HCC data 
+```{r pfas summary for hcc data split by ethnicity,results='asis'}
+data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between) %>%
+  tbl_summary(by = status,
+              type = all_continuous() ~ "continuous2",
+              statistic = list(
+                               all_continuous() ~ c("{mean} ({sd})",
+                                                    "{median} ({p25}, {p75})"),
+                               all_categorical() ~ "{n} ({p}%)")) %>%
+  add_p(pvalue_fun = ~ style_pvalue(.x, digits = 2)) %>%
+  add_overall() %>%
+  add_n()
+```
+
+### Data summary for NAFLD related HCC data
+```{r pfas summary for NAFLD related HCC data}
+# data_analysis2 %>% select(status, pfas_name, bmi_cat, alcohol_intake_cat, smokestatus, diabetes) %>%
+#   tbl_summary(by = status,
+#               type = all_continuous() ~ "continuous2",
+#               statistic = list(
+#                                all_continuous() ~ c("{mean} ({sd})",
+#                                                     "{median} ({p25}, {p75})"),
+#                                all_categorical() ~ "{n} ({p}%)")) %>%
+#   add_p(pvalue_fun = ~ style_pvalue(.x, digits = 2)) %>%
+#   add_overall() %>%
+#   add_n()
+
+```
+
+### Data summary for other HCC data
+```{r pfas summary for other HCC}
+# data_analysis3 %>% select(status, pfas_name, bmi_cat, alcohol_intake_cat, smokestatus, diabetes) %>%
+#   tbl_summary(by = status,
+#               type = all_continuous() ~ "continuous2",
+#               statistic = list(
+#                                all_continuous() ~ c("{mean} ({sd})",
+#                                                     "{median} ({p25}, {p75})"),
+#                                all_categorical() ~ "{n} ({p}%)")) %>%
+#   add_p(pvalue_fun = ~ style_pvalue(.x, digits = 2)) %>%
+#   add_overall() %>%
+#   add_n()
+```

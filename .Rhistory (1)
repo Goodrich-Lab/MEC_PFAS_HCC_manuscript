@@ -1,0 +1,512 @@
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+View(pfos_res)
+for(i in 0:15){
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+resout <- data.frame()
+for(i in 0:15){
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+for(i in 0:14){
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+for(i in 0:14){
+if(i = 0){resout <- data.frame() }
+for(i in 0:14){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+if(i == 0){resout <- data.frame() }
+for(i in 0:14){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_nafld_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+View(pfos_res)
+rm(pfhpa_hcc_main)
+if(i == 0){resout <- data.frame() }
+for(i in 0:14){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS  + strata(setnum),
+data = data_other_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses
+for(i in 0:15){
+if(i = 0){resout <- data.frame() }
+# Run lag time analyses
+for(i in 0:15){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses
+for(i in 0:15){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS +  alcohol_intake +
+diabetes + smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses
+for(i in 0:15){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS +  alcohol_intake +
+smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses
+for(i in 0:13){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS +  alcohol_intake +
+smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses
+for(i in 0:13){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ pfas_lg2_PFOS +
+smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses for PFOS
+for(i in 0:15){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ as.numeric(pfas_lg2_PFOS_quartile) +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + strata(setnum),
+data = data_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+# Run lag time analyses for PFOS
+for(i in 0:15){
+if(i == 0){resout <- data.frame() }
+res <- clogit(status ~ as.numeric(pfas_lg2_PFOS_quartile) +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + strata(setnum),
+data = data_nafld_hcc |> filter_lag_time(i)) |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout <- rbind(res, resout)
+}
+pfos_res <- resout |>
+filter(str_detect(term, "PFOS"))
+ggplot(pfos_res, aes(x = yrs_lag, y = exp(estimate))) +
+geom_point() +
+geom_errorbar(aes(ymin = exp(conf.low), ymax = exp(conf.high), width = 0.2)) +
+geom_hline(yintercept = 1, linetype = "dashed") +
+labs(y = "Odds Ratio", x = "Years Lagged", title = "PFOS and HCC Risk by Years Lagged") +
+theme_minimal() +
+theme(text = element_text(size = 16))
+View(pfos_res)
+# Run case only time to event analysis using cox proportional hazards
+coxph(Surv(year_between, 1) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + strata(setnum),
+data = case_only) #|>
+# Run case only time to event analysis using cox proportional hazards
+coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + strata(setnum),
+data = case_only) #|>
+# Run case only time to event analysis using cox proportional hazards
+coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus,
+data = case_only) #|>
+colnames(case_only[,1:100])
+colnames(case_only[,1:15])
+colnames(case_only[,1:30])
+# Run case only time to event analysis using cox proportional hazards
+coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) #|>
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) #|>
+summary(resout)
+case_only
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |> filter(str_detect(casetype, "Other"))) #|>
+summary(resout)
+resout |>
+broom::tidy(conf.int = TRUE) |>
+mutate(yrs_lag = i)
+resout |>
+broom::tidy(conf.int = TRUE)
+broom::tidy(conf.int = TRUE)
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |> filter(str_detect(casetype, "NAFLD"))) #|>
+summary(resout)
+broom::tidy(resout, conf.int = TRUE)
+table(data_hcc$casetype)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between >0))
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) #|>
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS +  alcohol_intake + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) #|>
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) #|>
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy(resout)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy(resout)
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only)
+# Run case only time to event analysis using cox proportional hazards
+resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy()
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy())
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS + scale(bmi) +
+smokestatus + sex + q1_byr + eth + studyarea + blood_age + casetype,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) |>
+broom::tidy())
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+diabetes + smokestatus + sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) |>
+broom::tidy())
+broom::tidy(resout, conf.int = TRUE)
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(year_between, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea,
+data = case_only) |>
+broom::tidy())
+View(data_hcc)
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS*casetype + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, ),
+year_between >0))) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between >0)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between > 0)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between > 0)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between > 0)) |>
+broom::tidy())
+case_only |>
+filter(str_detect(casetype, "NAFLD"),
+year_between > 0)
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS_quartile + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "Other"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only) #|>
+filter(str_detect(casetype, "Other"),
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only)) #|>
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS_quartile + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ pfas_lg2_PFOS + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"),
+)) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"))) |>
+broom::tidy())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = case_only |>
+filter(str_detect(casetype, "NAFLD"))) |>
+summary())
+# Run case only time to event analysis using cox proportional hazards
+(resout <- coxph(Surv(diagnosis_age, status) ~ as.numeric(pfas_lg2_PFOS_quartile) + #scale(bmi) +
+sex + q1_byr + eth + studyarea + blood_age,
+data = data_hcc)) #|>
