@@ -79,9 +79,25 @@ data_hcc <- data_hcc %>%
   mutate(eth_new = ifelse(eth %in% c("White", "African American", "Native Hawaiian"), "Others", as.character(eth)))
 
 
+
 # categorical pfas name
 pfas_name_cat <- colnames(data %>% select(contains("quartile")))
 
 # covariates
-covars <- c("bmi","alcohol_intake","smokestatus","diabetes")
+# covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_dp_amds_e_totscore")
+covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_fdgp6","q1_fdgp7")
+# covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_fdgp6", "q1_fdgp7")
+
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
+
+
+diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
+                                 "0_data_processing",
+                                 "0_raw_data",
+                                 "diet_PRS_data",
+                                 "pfas_food_diet.sas7bdat")) %>%
+  janitor::clean_names()
+ 
+
+diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
+            .funs = list(scld = ~scale(.)))

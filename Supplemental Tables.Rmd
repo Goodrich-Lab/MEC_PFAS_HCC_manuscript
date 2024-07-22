@@ -34,7 +34,7 @@ s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx"))
               names_from = "type",
               values_from = c(`Odds Ratio[95%CI]`, `P-Value`)) %>%
   arrange(desc(`Odds Ratio[95%CI]_Overall \n(n = 474)`))
-# writexl::write_xlsx(s1, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC.xlsx"))
+writexl::write_xlsx(s1, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC.xlsx"))
 ```
 
 ## Supplemental Table 2
@@ -46,9 +46,9 @@ s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analys
                                pfas_name == "Me_PFHxA" ~ "MePFHxA",
                                TRUE ~ pfas_name),
          ) %>% 
-    mutate(type = case_when(type == "All Races" ~ "Overall \n(n = 474)",
-                          type == "Japanese American" ~ "Japanese American \n(n = 182)", 
-                        type == "Latino"~ "Latino \n(n = 160)"))%>%
+    # mutate(type = case_when(type == "All Races" ~ "Overall \n(n = 474)",
+    #                       type == "Japanese American" ~ "Japanese American \n(n = 182)", 
+    #                     type == "Latino"~ "Latino \n(n = 160)"))%>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
                                round(exp_ci_low, 2), ",",
                                round(exp_ci_high, 2),"]"),
@@ -61,7 +61,7 @@ s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analys
   mutate(term = paste(substr(term, (nchar(term)-8), nchar(term)-1) %>% toTitleCase(), substr(term, nchar(term), nchar(term)))) %>%
   mutate(across(everything(), ~ ifelse(. == "1 [NA,NA]", "1", .)))
 
-# writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose response.xlsx"))
+writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose response.xlsx"))
 ```
 
 ## Supplemental Table S3

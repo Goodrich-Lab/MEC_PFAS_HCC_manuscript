@@ -27,31 +27,7 @@ source(fs::path(here::here("!load_data.R")))
 ## Analysis1: Interaction of PFHpA and PNPLA3 with HCC
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
- 
-covariate_input <- " alcohol_intake + scale(bmi) + diabetes + smokestatus" 
-
-## create dataframe with names of dependent vars (PFAS) ----
-pfas_names <- tibble(exposure = "pfas_lg2_PFHpA")
-
-## create dataframe with names of PRS vars ----
-snp_name <- tibble(snp = "x22_43928850")
-
-pfas_snp <- expand_grid(pfas_names, snp_name) %>%
-  mutate(pfas_snp = paste(exposure,"*",snp)) 
-
-# Get Model covariates 
-covar_names <- tibble(
-  covariates =  covariate_input)
-
-# Make all clogit formulas
-ind_vars <- expand_grid(pfas_snp,covar_names) |>  
-  mutate(formula = paste("status ~ v1 + v2 + v3 + v4 + v5 + v6 + ", 
-                         "+", pfas_snp,
-                         "+", covariates, 
-                         "+strata(setnum)") |>
-           str_replace("\\+  \\+", " + "))
-
-model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x22_43928850 +  alcohol_intake + scale(bmi) + diabetes + smokestatus +strata(setnum),
+model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x22_43928850 +  alcohol_intake + scale(bmi) + diabetes + smokestatus +strata(setnum) + q1_dp_amds_e_totscore,
                 data = data_hcc,
                 method = "efron",
                 robust = TRUE)
@@ -109,51 +85,11 @@ res_pfhpa <- epiomics::owas_clogit(data_hcc ,
   coord_flip()
   )
 
-# ggsave(filename = fs::path(dir_figures,
-#                              "figures",
-#                              "Fig2. Interaction of PFHpA with PNPLA3.jpeg"),
-#        width =5,
-#        height = 2,
-#        dpi = 600,
-#        bg = "white")
+ggsave(filename = fs::path(dir_figures,
+                             "main_figures",
+                             "Fig2. Interaction of PFHpA with PNPLA3.jpeg"),
+       width =5,
+       height = 2,
+       dpi = 600,
+       bg = "white")
 ```
-
-# Association between plasma PFAS and HCC risk
-```{r}
-res_hcc <- epiomics::owas_clogit(data_hcc , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name,
-                                    conf_int = TRUE) %>%
-  mutate(odds_ratio = exp(estimate),
-         exp_ci_low = exp(conf_low),
-         exp_ci_high = exp(conf_high),
-         type = "Overall")
-
-eth_categories <- unique(data_hcc$eth)
-
-for(race in eth_categories[c(1,2)]) {
-  res_hcc_temp <- epiomics::owas_clogit(data_hcc %>% filter(eth == race) , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name,
-                                    conf_int = TRUE) %>%
-  mutate(odds_ratio = exp(estimate),
-         exp_ci_low = exp(conf_low),
-         exp_ci_high = exp(conf_high),
-         type = race)
-  res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
-}
-
-
-# reorder PFAS by estimate
-res_hcc1 <- res_hcc |> 
-  mutate(pfas_name = str_remove(feature_name, "pfas_lg2_"),
-         sig = case_when(adjusted_pval < 0.05 ~
-                           "Sig.",
-                          TRUE~ "Not Sig.")) 
-# writexl::write_xlsx(all_results_df_hcc, fs::path(dir_result, "1_single_exposure_analysis_result_hcc.xlsx"))
-```
-
