@@ -85,8 +85,9 @@ pfas_name_cat <- colnames(data %>% select(contains("quartile")))
 
 # covariates
 # covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_dp_amds_e_totscore")
-covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_fdgp6","q1_fdgp7")
-# covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_fdgp6", "q1_fdgp7")
+covars <- c("q1_dp_amds_e_totscore", "q1_fdgp7", "alcohol_intake", "smokestatus")
+
+
 
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 

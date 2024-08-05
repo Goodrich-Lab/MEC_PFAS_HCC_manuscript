@@ -21,15 +21,26 @@ source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
-```
 
+pfc_chem_summaries <-  data_hcc %>%
+  select(x1_220796686:x22_43928850) %>%
+  pivot_longer(cols = x1_220796686:x22_43928850) %>% 
+  group_by(name) %>% 
+  summarise(pctna   = mean(value == 0, na.rm = TRUE), 
+            variance = var(value, na.rm = TRUE),
+            mean    = mean(value, na.rm = TRUE))
+
+
+snp_name_df <- pfc_chem_summaries %>% 
+  filter(pctna < 0.75) %>% select(name)
+```
 
 
 ## Analysis1: HCC
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
  
-covariate_input <- " alcohol_intake + scale(bmi) + diabetes + smokestatus" 
+covariate_input <- "alcohol_intake + smokestatus + q1_dp_amds_e_totscore + q1_fdgp7"
 
 ## create dataframe with names of dependent vars (PFAS) ----
 pfas_names <- tibble(exposure = pfas_name)
@@ -283,7 +294,7 @@ res_hcc <- epiomics::owas_clogit(data_hcc ,
          exp_ci_high = exp(conf_high),
          type = "Overall")
 
-eth_categories <- unique(data_hcc$eth)
+eth_categories <- unique(data_hcc$eth_new)
 
 for(race in eth_categories[c(1,2)]) {
   res_hcc_temp <- epiomics::owas_clogit(data_hcc %>% filter(eth == race) , 
