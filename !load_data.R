@@ -7,6 +7,18 @@ data <- readRDS(fs::path(
   dir_cleaned_data,
   "hhear_complete_data_v1.RDS")) 
 
+# calorie <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
+#                                     "0_data_processing",
+#                                     "0_raw_data",
+#                                     "diet_PRS_data",
+#                                     "pfas_calories_072624.sas7bdat")) %>%
+#   janitor::clean_names()
+# # 
+# data <- data %>% tidylog::left_join(calorie, by = "barcode")%>%
+#   mutate(lg_q1_calories = log(q1_calories))
+# 
+# write_rds(data, fs::path(
+#   dir_cleaned_data,"hhear_complete_data_v1.RDS" ))
 # Adding 
 
 snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
@@ -85,8 +97,7 @@ pfas_name_cat <- colnames(data %>% select(contains("quartile")))
 
 # covariates
 # covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_dp_amds_e_totscore")
-covars <- c("q1_dp_amds_e_totscore", "q1_fdgp7", "alcohol_intake", "smokestatus")
-
+covars <- c("q1_dp_amds_totscore", "q1_fdgp7", "alcohol_intake", "smokestatus")
 
 
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
@@ -98,7 +109,7 @@ diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirnam
                                  "diet_PRS_data",
                                  "pfas_food_diet.sas7bdat")) %>%
   janitor::clean_names()
- 
+
 
 diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
             .funs = list(scld = ~scale(.)))

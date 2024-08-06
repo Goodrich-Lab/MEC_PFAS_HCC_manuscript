@@ -23,11 +23,10 @@ source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
 ```
 
-
 ## Analysis1: Interaction of PFHpA and PNPLA3 with HCC
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
-model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x22_43928850 +  alcohol_intake + smokestatus +strata(setnum) + q1_dp_amds_e_totscore + q1_fdgp7,
+model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x22_43928850 +  alcohol_intake + smokestatus +strata(setnum) + q1_dp_amds_totscore + q1_fdgp7,
                 data = data_hcc,
                 method = "efron",
                 robust = TRUE)

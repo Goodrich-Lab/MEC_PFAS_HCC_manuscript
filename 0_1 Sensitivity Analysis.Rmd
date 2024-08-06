@@ -22,12 +22,13 @@ source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
 ```
 
+
 ## Analysis1. Conditional logistic regression - HCC
 **Outcome: HCC vs control**
 
 **Exposure: lg2 transformed and then normalzied PFAS**
 
-**Covars: alcohol, smoking, amds, shellfish**
+**Covars: alcohol, smoking, amds, shellfish, total calories**
 
 **Analysis: conditional logistic regression**
 
@@ -36,6 +37,10 @@ source(fs::path(here::here("!load_data.R")))
 **All races(474), White(46), African American(52), Japanese American(182), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1}
+covars <- c("q1_dp_amds_totscore", "q1_fdgp7", 
+            "alcohol_intake", "smokestatus",
+            "lg_q1_calories")
+
 res_hcc <- epiomics::owas_clogit(data_hcc , 
                                     cc_set = "setnum", 
                                     cc_status = "status", 
@@ -91,8 +96,7 @@ res_hcc2 <- res_hcc1 %>%
   mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
                           type == "Japanese American" ~ "Japanese American \n(n = 182)", 
                         type == "Latino"~ "Latino \n(n = 160)",
-                        type == "Others" ~ "Others \n(n = 132)")
-         )
+                        type == "Others" ~ "Others \n(n = 132)"))
 
 # res <- res %>% bind_rows(res_hcc2)
 # 
@@ -102,7 +106,6 @@ res_hcc2 <- res_hcc1 %>%
 # writexl::write_xlsx(res1, fs::path(dir_result, "pfas_hcc_with_diff_covars.xlsx"))
 
 (pfhpa_hcc_main <- res_hcc2  %>%
-  filter(type != "Others \n(n = 132)")%>%
   ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
   geom_point(size = 1) +
   geom_errorbar(aes(ymin = exp(conf_low),
@@ -111,8 +114,7 @@ res_hcc2 <- res_hcc1 %>%
   geom_hline(yintercept = 1, linetype = 2, color = "grey") +
   ylab("Odds Ratio (95% CI)") +
   # ggtitle("Exposure Outcome Analysis for HCC Cases") +
-  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")), scales = "free_y")+
-  facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+ 
+  facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")), scales = "free_y")+
   theme(panel.background = element_rect(fill="white"), 
         strip.background = element_rect(fill = "white"),
         strip.text.y = element_text(angle = 0, hjust = 0),
@@ -169,8 +171,8 @@ res_hcc2 <- res_hcc1 %>%
 
 
 ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig. PFAS main effect_Overall.jpeg"),
+                           "sensitivity",
+                           "Fig. Sensitivity Analysis PFAS main effect_Overall.jpeg"),
        width = 7,
        height = 5,
        dpi = 300,
@@ -183,7 +185,7 @@ ggsave(filename = fs::path(dir_figures,
 
 **Exposure: categorized pfas(quartile)**
 
-**Covars: aMDS**
+**Covars: alcohol, smoking, amds, shellfish**
 
 **Analysis: conditional logistic regression**
 
@@ -192,7 +194,7 @@ ggsave(filename = fs::path(dir_figures,
 **All races(474), White(46), African American(52), Japanese American(182), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1 cat}
-covariate_input <- "alcohol_intake + smokestatus + q1_dp_amds_totscore + q1_fdgp7"
+covariate_input <- "alcohol_intake + smokestatus + q1_dp_amds_e_totscore + q1_fdgp7 + lg_q1_calories"
 
 ## create dataframe with names of dependent vars (PFAS) ----
 pfas_names <- tibble(exposure = pfas_name_cat)
@@ -441,16 +443,13 @@ all_result_df3 <- all_result_df2 %>%
 
 # writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis.xlsx"))
 
-(pfhpa_hcc <-  ggplot(all_result_df3 %>% 
-                        filter(pfas_name == "PFHpA") %>%
-                        filter(type != "Others \n(n = 132)"),
+(pfhpa_hcc <-  ggplot(all_result_df3 %>% filter(pfas_name == "PFHpA"),
        aes(x = odds_ratio, y = fct_rev(plot_name))) +
   geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
                 width = 0, position = position_dodge(width = 1)) +
   geom_point(size = 1, position = position_dodge(width = 1)) + 
   geom_vline(xintercept = 1, linetype = 2, color = "grey") +
-  # facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")))+
-   facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")))+
+  facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")))+
   xlab("Odds Ratio (95% CI)") +
   theme(#axis.title.x = element_blank(),
         # axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
@@ -470,9 +469,7 @@ all_result_df3 <- all_result_df2 %>%
 
 
 p1 <- pfhpa_hcc + geom_text(
-  data = all_result_df3 %>% 
-    filter(pfas_name == "PFHpA") %>%
-    filter(type != "Others \n(n = 132)"),
+  data    = all_result_df3 %>% filter(pfas_name == "PFHpA"),
   mapping = aes(x = -Inf, y = -Inf, label = label),
   color = "black",
   hjust   = -0.3,
@@ -506,8 +503,8 @@ p1 <- pfhpa_hcc + geom_text(
                           axis = "lt"))
 
 ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig1. Main Effect Final.jpeg"),
+                           "sensitivity",
+                           "Fig1. Sensitivity_Main Effect.jpeg"),
        width = 10,
        height = 8,
        dpi = 300,
@@ -546,8 +543,8 @@ ggsave(filename = fs::path(dir_figures,
 
 
 ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig. PFAS main effect by race.jpeg"),
+                           "sensitivity",
+                           "Fig. Sensitivity Analysis_PFAS main effect by race.jpeg"),
        width = 4,
        height = 2.5,
        dpi = 300,
