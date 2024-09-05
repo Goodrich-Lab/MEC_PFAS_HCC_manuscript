@@ -22,7 +22,6 @@ source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
 
-data_analysis <- data_hcc %>% filter(eth %in% c("Japanese American", "Latino"))
 ```
 
 
@@ -135,6 +134,7 @@ res_df <- data.frame()
 # Function to fit model and test heterogeneity for each PFAS
 analyze_pfas <- function(pfas, data) {
   # Subset data for the current PFAS
+  
   subset_data <- subset(data, pfas_name == pfas)%>%
     select(-pfas_name)
   
@@ -173,6 +173,19 @@ for (pfas in unique(meta_df$pfas_name)) {
   temp_df <- analyze_pfas(pfas, meta_df)
   res_df <- res_df %>% bind_rows(temp_df)
 }
+
+res_df1 <- res_df %>% 
+  mutate(or_ci = paste0(round(exp(pooled_lg_or),2), " [", 
+                        round(exp(pooled_ci.lb),2), ", ", 
+                        round(exp(pooled_ci.ub),2), "]"))%>%
+  rename(pfas_name = pfas) %>%
+  mutate(pfas_name = case_when(pfas_name == "4H_PFBA" ~ "4H-PFBA",
+                               pfas_name == "10_2_FToH" ~ "10:2 FTOH",
+                               pfas_name == "2_aminohexafluoropropan_2_ol" ~ "2-Aminohexafluoropropan-2-ol",
+                               pfas_name == "Me_PFHxA" ~ "MePFHxA",
+                               TRUE ~ pfas_name))
+
+writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res.xlsx"))
 ```
 
 

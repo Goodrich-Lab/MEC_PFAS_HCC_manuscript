@@ -34,7 +34,19 @@ s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx"))
               names_from = "type",
               values_from = c(`Odds Ratio[95%CI]`, `P-Value`)) %>%
   arrange(desc(`Odds Ratio[95%CI]_Overall \n(n = 474)`))
-writexl::write_xlsx(s1, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC.xlsx"))
+s4 <- readxl::read_xlsx(fs::path(dir_result, "heterogeneity_res.xlsx")) 
+
+s1_full <- s1 %>% 
+  tidylog::left_join(s4 %>% select(pfas_name, or_ci, I2, Q, Q_pval), 
+                     by = c("pfas_name"))%>%
+  select(pfas_name, contains("Overall"), contains("Japanese"), 
+         contains("Latino"), contains("African"), contains("White"), everything())%>%
+  mutate(I2 = round(I2, 6),
+         Q = round(Q,2),
+         Q_pval = round(Q_pval, 2))
+
+writexl::write_xlsx(s1_full, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC.xlsx")) 
+
 ```
 
 ## Supplemental Table 2
@@ -59,7 +71,11 @@ s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analys
               names_from = "type",
               values_from = c(`Odds Ratio[95%CI]`, `P-Value`, `P trend`)) %>%
   mutate(term = paste(substr(term, (nchar(term)-8), nchar(term)-1) %>% toTitleCase(), substr(term, nchar(term), nchar(term)))) %>%
-  mutate(across(everything(), ~ ifelse(. == "1 [NA,NA]", "1", .)))
+  mutate(across(everything(), ~ ifelse(. == "1 [NA,NA]", "1", .)))%>%
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name))%>%
+  arrange(pfas_name)%>%
+  select(pfas_name, term, contains("Overall"), contains("Japanese"), 
+         contains("Latino"))
 
 writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose response.xlsx"))
 ```
@@ -84,14 +100,25 @@ s3 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction.xlsx")) %
                                round(exp_ci_low, 2), ",",
                                round(exp_ci_high, 2),"]"),
          `P-Value` = signif(p.value, 2))%>% 
-  select(type, pfas_name, snp, genes, name, `Odds Ratio[95%CI]`,`P-Value`)%>%
-  pivot_wider(id_cols = c("type","pfas_name","snp", "genes"),
+  select(type, pfas_name, snp, genes, name, rsid, `Odds Ratio[95%CI]`,`P-Value`)%>%
+  pivot_wider(id_cols = c("type","pfas_name","snp", "genes","rsid"),
               names_from = "name",
               values_from = c(`Odds Ratio[95%CI]`, `P-Value`)) %>%
-  pivot_wider(id_cols = c("pfas_name","snp", "genes"),
+  pivot_wider(id_cols = c("pfas_name","snp", "genes", "rsid"),
               names_from = "type",
               values_from = c(`Odds Ratio[95%CI]_PFAS Main Effect`:`P-Value_SNP * PFAS Interaction`)) %>%
-  select(pfas_name:genes, contains("SNP * PFAS Interaction_Overall"),contains("SNP Main Effect_Overall"), contains("PFAS Main Effect_Overall"), contains("SNP * PFAS Interaction_Japanese"),contains("SNP Main Effect_Japanese"), contains("PFAS Main Effect_Japanese"),contains("SNP * PFAS Interaction_Latino"),contains("SNP Main Effect_Latino"), contains("PFAS Main Effect_Latino"))
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name))%>%
+  arrange(pfas_name)%>%
+  select(pfas_name, snp, genes, rsid, contains("PFAS Main Effect_Overall"),
+         contains("SNP Main Effect_Overall"), 
+         contains("SNP * PFAS Interaction_Overall"),
+         contains("PFAS Main Effect_Japanese"),
+         contains("SNP Main Effect_Japanese"), 
+         contains("SNP * PFAS Interaction_Japanese"),
+         contains("PFAS Main Effect_Latino"),
+         contains("SNP Main Effect_Latino"), 
+         contains("SNP * PFAS Interaction_Latino")
+         )
   
 writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and SNP.xlsx"))
 ```

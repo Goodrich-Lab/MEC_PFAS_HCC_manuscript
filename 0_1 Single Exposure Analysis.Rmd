@@ -47,10 +47,10 @@ res_hcc <- epiomics::owas_clogit(data_hcc ,
          exp_ci_high = exp(conf_high),
          type = "Overall")
 
-eth_categories <- unique(data_hcc$eth_new)
+eth_categories <- unique(data_hcc$eth)
 
-for(race in eth_categories) {
-  res_hcc_temp <- epiomics::owas_clogit(data_hcc %>% filter(eth_new == race) , 
+for(race in eth_categories[1:4]) {
+  res_hcc_temp <- epiomics::owas_clogit(data_hcc %>% filter(eth == race) , 
                                     cc_set = "setnum", 
                                     cc_status = "status", 
                                     covars = covars,
@@ -89,20 +89,20 @@ res_hcc2 <- res_hcc1 %>%
          ) %>%
   mutate(pfas_name = fct_reorder(pfas_name, if_else(type == "Overall", estimate, NA_real_))) %>%
   mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
-                          type == "Japanese American" ~ "Japanese American \n(n = 182)", 
-                        type == "Latino"~ "Latino \n(n = 160)",
-                        type == "Others" ~ "Others \n(n = 132)")
+                          type == "Japanese American" ~ "Japanese American \n(n = 182)",
+                          type == "Latino"~ "Latino \n(n = 160)",
+                          type == "White" ~ "White \n(n = 46)",
+                          type == "African American" ~ "African American \n(n = 52)")
          )
-
-# res <- res %>% bind_rows(res_hcc2)
+  # mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
+  #                         type == "Japanese American" ~ "Japanese American \n(n = 182)", 
+  #                       type == "Latino"~ "Latino \n(n = 160)",
+  #                       type == "Others" ~ "Others \n(n = 132)")
+  #        )
 # 
-# res1 <- res %>% select(covars, everything())%>%
-#   mutate_if(is.numeric, round, digits = 3)
-
-# writexl::write_xlsx(res1, fs::path(dir_result, "pfas_hcc_with_diff_covars.xlsx"))
 
 (pfhpa_hcc_main <- res_hcc2  %>%
-  filter(type != "Others \n(n = 132)")%>%
+  filter(!type  %in% c("White \n(n = 46)", "African American \n(n = 52)"))%>%
   ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
   geom_point(size = 1) +
   geom_errorbar(aes(ymin = exp(conf_low),

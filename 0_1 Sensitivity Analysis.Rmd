@@ -37,9 +37,13 @@ source(fs::path(here::here("!load_data.R")))
 **All races(474), White(46), African American(52), Japanese American(182), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1}
+# covars <- c("q1_dp_amds_totscore", "q1_fdgp7", 
+#             "alcohol_intake", "smokestatus",
+#             "lg_q1_calories")
+
 covars <- c("q1_dp_amds_totscore", "q1_fdgp7", 
             "alcohol_intake", "smokestatus",
-            "lg_q1_calories")
+            "v1", "v2", "v3", "v4", "v5", "v6")
 
 res_hcc <- epiomics::owas_clogit(data_hcc , 
                                     cc_set = "setnum", 

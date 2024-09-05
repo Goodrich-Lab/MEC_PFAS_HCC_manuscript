@@ -26,8 +26,9 @@ source(fs::path(here::here("!load_data.R")))
 ## Checking SNPs
 **x14_94378610, x17_66214462, x19_19268740 were excluded from analysis**
 ```{r correlation of SNPs}
+
 pfc_chem_summaries <-  data_hcc %>%
-  select(x1_220796686:x22_43928850) %>%
+  dplyr::select(x1_220796686:x22_43928850) %>%
   pivot_longer(cols = x1_220796686:x22_43928850) %>% 
   group_by(name) %>% 
   summarise(pctna   = mean(value == 0, na.rm = TRUE), 
@@ -36,14 +37,15 @@ pfc_chem_summaries <-  data_hcc %>%
 
 
 snp_name_df <- pfc_chem_summaries %>% 
-  filter(pctna < 0.75) %>% select(name)
+  filter(pctna < 0.75) %>% dplyr::select(name)
 
 snp_name_scld <- paste0(snp_name_df$name, "_scld")
 ```
 
 ## summary of SNPs
 ```{r summary of SNPs}
-summarytools::view(summarytools::dfSummary(data_hcc%>% select(snp_name_df$name),
+summarytools::view(summarytools::dfSummary(data_hcc%>% 
+                                             dplyr::select(snp_name_df$name),
                    style = 'grid',
                    max.distinct.values = 10, 
                    plain.ascii =   FALSE, 
@@ -113,7 +115,8 @@ data_analysis_other_hcc_latino_snp <- data_other_hcc%>%
   mutate_at(.vars = vars(snp_name_df$name),
             .funs = list(scld = ~scale(.))) 
 
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>% select(contains("scld"), -contains("pfas")),
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>%
+                                             dplyr::select(contains("scld"), -contains("pfas")),
                    style = 'grid',
                    max.distinct.values = 10, 
                    plain.ascii =   FALSE, 
@@ -121,14 +124,18 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>% select
                    headings = FALSE), method = "render")
 
 
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>% select(contains("scld"),-contains("pfas")),
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
+                                             dplyr::select(contains("scld"),
+                                                           -contains("pfas")),
                    style = 'grid',
                    max.distinct.values = 10, 
                    plain.ascii =   FALSE, 
                    valid.col = FALSE, 
                    headings = FALSE), method = "render")
 
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>% select(contains("scld"),-contains("pfas")),
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
+                                             dplyr::select(contains("scld"),
+                                                           -contains("pfas")),
                    style = 'grid',
                    max.distinct.values = 10, 
                    plain.ascii =   FALSE, 
@@ -141,9 +148,9 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>% select(conta
 ## Analysis1: HCC
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
- 
-covariate_input <- " alcohol_intake +  smokestatus + alcohol_intake + q1_dp_amds_e_totscore + q1_fdgp7" 
 
+covariate_input <- " alcohol_intake +  smokestatus + q1_dp_amds_totscore + q1_fdgp7"
+# covariate_input <- " bmi +  smokestatus + alcohol_intake + diabetes"
 ## create dataframe with names of dependent vars (PFAS) ----
 pfas_names <- tibble(exposure = pfas_name)
 
@@ -212,14 +219,14 @@ ind_vars$clogit_out2 <- map(
 # Get final data -------------------
 all_results_df_hcc <- ind_vars %>% 
   unnest(clogit_out) %>% 
-  select(model_type, covariates, everything()) %>%
+  dplyr::select(model_type, covariates, everything()) %>%
   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
                          p.value >= 0.05 ~ "Not Sig"),
          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
 
 all_results_df_hcc_japan <- ind_vars %>% 
   unnest(clogit_out1) %>% 
-  select(model_type, covariates, everything()) %>%
+  dplyr::select(model_type, covariates, everything()) %>%
   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
                          p.value >= 0.05 ~ "Not Sig"),
          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
@@ -228,7 +235,7 @@ all_results_df_hcc_japan <- ind_vars %>%
 
 all_results_df_hcc_latino <- ind_vars %>% 
   unnest(clogit_out2) %>% 
-  select(model_type, covariates, everything()) %>%
+  dplyr::select(model_type, covariates, everything()) %>%
   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
                          p.value >= 0.05 ~ "Not Sig"),
          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
@@ -239,7 +246,7 @@ all_results_df_hcc_latino <- ind_vars %>%
 all_results_df_hcc1 <- all_results_df_hcc %>% 
   # bind_rows(intercept_data) %>% 
   filter(grepl("lg2",term)|grepl("x", term)) %>%
-  select(exposure, snp, term, p.value, odds_ratio, contains("exp_")) %>%
+  dplyr::select(exposure, snp, term, p.value, odds_ratio, contains("exp_")) %>%
   mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
 
 
@@ -266,7 +273,7 @@ all_results_df_hcc3 <- all_results_df_hcc2 %>%
 all_results_df_hcc_japan1 <- all_results_df_hcc_japan %>% 
   # bind_rows(intercept_data) %>% 
   filter(grepl("lg2",term)|grepl("x", term)) %>%
-  select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+  dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
   mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
 
 
@@ -286,14 +293,14 @@ all_results_df_hcc_japan3 <- all_results_df_hcc_japan2 %>%
                          p.value < 0.05 ~ "Sig.",
                          TRUE ~ "Not Sig.")) %>%
   tidylog::left_join(snp_info%>%
-                       select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+                       dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
   ungroup()
 ## Latino 
 
 all_results_df_hcc_latino1 <- all_results_df_hcc_latino %>% 
   # bind_rows(intercept_data) %>% 
   filter(grepl("lg2",term)|grepl("x", term)) %>%
-  select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+  dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
   mutate(pfas_name = str_remove(exposure, "pfas_lg2_")) 
 
 
@@ -313,7 +320,7 @@ all_results_df_hcc_latino3 <- all_results_df_hcc_latino2 %>%
                          p.value < 0.05 ~ "Sig.",
                          TRUE ~ "Not Sig.")) %>%
   tidylog::left_join(snp_info%>%
-                       select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+                       dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
     ungroup()
 
 all_result <- all_results_df_hcc3 %>%
@@ -338,6 +345,6 @@ all_result_new <- all_results_df_hcc3 %>%
                                 effect_type == "PFAS and SNP" ~ paste0(snp, "*",
                                                                        "PFAS Interaction")))
 
-writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
+# writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
 ```
 

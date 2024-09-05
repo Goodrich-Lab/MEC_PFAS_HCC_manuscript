@@ -26,19 +26,19 @@ source(fs::path(here::here("!load_data.R")))
 ## Analysis1: Interaction of PFHpA and PNPLA3 with HCC
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
-model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x22_43928850 +  alcohol_intake + smokestatus +strata(setnum) + q1_dp_amds_totscore + q1_fdgp7,
+model <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6  +  pfas_lg2_PFHpA * x16_53772541 +  alcohol_intake + smokestatus +strata(setnum) + q1_dp_amds_totscore + q1_fdgp7,
                 data = data_hcc,
                 method = "efron",
                 robust = TRUE)
 
-res <- emtrends(model, ~x22_43928850, var = "pfas_lg2_PFHpA", 
-                at = list(x22_43928850 = c(0, 2))) %>% 
+res <- emtrends(model, ~x16_53772541, var = "pfas_lg2_PFHpA", 
+                at = list(x16_53772541 = c(0, 2))) %>% 
   data.frame() %>% 
-  select(x22_43928850, pfas_lg2_PFHpA.trend, asymp.LCL, asymp.UCL) %>%
+  select(x16_53772541, pfas_lg2_PFHpA.trend, asymp.LCL, asymp.UCL) %>%
   rename(estimate = pfas_lg2_PFHpA.trend,
          conf_low = asymp.LCL,
          conf_high = asymp.UCL)%>%
-  mutate(type = ifelse(x22_43928850== 0, 
+  mutate(type = ifelse(x16_53772541== 0, 
                        "Low-risk variant", 
                        "High-risk variant"))
   
