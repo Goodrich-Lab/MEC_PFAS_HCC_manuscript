@@ -1,0 +1,44 @@
+---
+title: "6_Identify liver eQTLs from GTEx"
+author: "Jesse Goodrich"
+date: "2024-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Setup ptoject
+source(here::here("!libraries.R"))
+source(here::here("!directories.R"))
+
+# Read in GTEx data
+liver_egenes <- read_tsv(fs::path(dir_data, 
+                                  "GTEx Liver eQTLs", 
+                                  "Liver.v8.egenes.txt"))
+
+sig_genes <- read_tsv(fs::path(dir_data, 
+                               "GTEx Liver eQTLs", 
+                               "Liver.v8.signif_variant_gene_pairs.txt"))
+
+
+# Set MEC SNPS
+mec_PFAS_snps <- c("rs56094641", "rs4808199", "rs641738", "rs738408", "rs4918722")
+
+# Interaction p-values
+#   rsid       genes           p.value
+#   <chr>      <chr>             <dbl>
+# 1 rs4918722  GPAM             0.0980
+# 2 rs56094641 FTO              0.0593
+# 3 rs4808199  GATAD2A; MIR640  0.0380
+# 4 rs641738   TMC4; MBOAT7     0.0211
+# 5 rs738408   PNPLA3           0.0668
+```
+
+
+# Examine overlap between MEC SNPS and GTEx
+```{r}
+table(mec_PFAS_snps %in% liver_egenes$rs_id_dbSNP151_GRCh38p7)
+table(mec_PFAS_snps %in% sig_genes$
+        ```
+      
+```
+
