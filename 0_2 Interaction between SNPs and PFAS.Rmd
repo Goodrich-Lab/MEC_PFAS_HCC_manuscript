@@ -40,22 +40,24 @@ pfc_chem_summaries <-  data_hcc %>%
             variance = var(value, na.rm = TRUE),
             mean    = mean(value, na.rm = TRUE))
 
-
-snp_name_df <- pfc_chem_summaries %>% 
+snp_name_df <-  tidylog::left_join(pfc_chem_summaries, 
+                                   snp_info, by = c("name" = "snp_name")) |>
   filter(pctna < 0.75) %>% dplyr::select(name)
 
-snp_name_scld <- paste0(snp_name_df$name, "_scld")
+snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
+
 ```
 
 ## summary of SNPs
 ```{r summary of SNPs}
-summarytools::view(summarytools::dfSummary(data_hcc %>% 
-                                             dplyr::select(snp_name_df$name),
-                                           style = 'grid',
-                                           max.distinct.values = 10, 
-                                           plain.ascii =   FALSE, 
-                                           valid.col = FALSE, 
-                                           headings = FALSE), method = "render")
+summarytools::view(
+  summarytools::dfSummary(data_hcc %>% 
+                            dplyr::select(snp_name_df$name),
+                          style = 'grid',
+                          max.distinct.values = 10, 
+                          plain.ascii =   FALSE, 
+                          valid.col = FALSE, 
+                          headings = FALSE), method = "render")
 ```
 
 ## summary of SNPs after normalized
@@ -149,12 +151,51 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
 
 ```
 
-## Analysis1: HCC
+## Analysis 1: PRS risk score
+```{r }
+hist(log(data_hcc$prs_wt))
+as.numeric(gtools::quantcut(data_hcc$prs_wt, q = 10))
+# mainmod <- clogit(status ~ pfas_lg2_PFHpA*scale(prs_wt) +
+x = as.numeric()
+
+for(i in 2:20) {
+  mainmod1 <- clogit(status ~ pfas_lg2_PFHpA + (gtools::quantcut(data_hcc$prs_wt, q = i)) +
+                       v1 + v2 + v3 + v4 + v5 + v6 + 
+                       alcohol_intake +
+                       smokestatus +
+                       q1_dp_amds_totscore +
+                       q1_fdgp7 +
+                       strata(setnum), 
+                     data = data_hcc) 
+  
+  mainmod2 <- clogit(status ~ pfas_lg2_PFHpA*(gtools::quantcut(data_hcc$prs_wt, q = i)) +
+                       v1 + v2 + v3 + v4 + v5 + v6 + 
+                       alcohol_intake +
+                       smokestatus +
+                       q1_dp_amds_totscore +
+                       q1_fdgp7 +
+                       strata(setnum), 
+                     data = data_hcc) 
+  x[i] = tidy(anova(mainmod1, mainmod2))$p.value[2]
+  # tidy(mainmod)
+  # x[i] = tidy(mainmod)$p.value[nrow(tidy(mainmod))]
+}
+
+min(x, na.rm = TRUE)
+
+data_hcc |> select(contains("prs")) |> colnames()
+# "prs_uw"         "prs_wt"         "prs_uw_cat"     "prs_wt_cat"     "prs_uw_median"  "prs_wt_median"  "prs_uw_tertile"
+```
+
+
+# Analysis 2: Individual SNPS
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
 # 1. Set Covariates ----
 # Covariates for main exposure outcome associations
-covariate_input <- " alcohol_intake + smokestatus + q1_dp_amds_totscore + q1_fdgp7"
+covariate_input <- " alcohol_intake + smokestatus + q1_dp_amds_totscore + 
+q1_fdgp7"
+
 
 # This was the original model before correcting the covariates
 # covariate_input <- " bmi +  smokestatus + alcohol_intake + diabetes"
@@ -175,7 +216,7 @@ covar_names <- tibble(
 # 2. Make all clogit formulas ----
 
 ind_vars <- expand_grid(pfas_snp,covar_names) |>  
-  mutate(formula = paste("status ~ v1 + v2 + v3 + v4 + v5 + v6 + ",
+  mutate(formula = paste("status ~ v1 + v2 + v3 + v4 + v5 + v6",
                          "+", pfas_snp,
                          "+", covariates, 
                          "+strata(setnum)") |>
@@ -352,7 +393,25 @@ all_result_new <- all_results_df_hcc3 %>%
   mutate(name_plot  = case_when(effect_type == "PFAS" ~ paste0(snp, " (", "PFAS Main Effect)"),
                                 effect_type == "Genetic Risk" ~ paste0(snp, " Main Effect"),
                                 effect_type == "PFAS and SNP" ~ paste0(snp, "*",
-                                                                       "PFAS Interaction")))
+                                                                       "PFAS Interaction")), 
+         genes = if_else(is.na(genes), snp, genes), 
+         rsid = if_else(is.na(rsid), snp, rsid) ) 
+
+# Calculate adjusted p-values
+intef <- all_result_new |> 
+  # tidylog::filter(effect_type == "PFAS and SNP") |>
+  group_by(type) |> 
+  mutate(p_adjust2 = p.adjust(p.value, method = "fdr")) |> 
+  ungroup()
+
+pfhpa_gene_interaction <- intef |> 
+  tidylog::filter(effect_type == "PFAS and SNP") |>
+  tidylog::filter(str_detect(exposure, "PFHpA"), 
+                  type == "All races") 
+
+min(pfhpa_gene_interaction$p_adjust2)
+min(pfhpa_gene_interaction$p_adjusted)
+# .12
 
 # writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
 ```
@@ -371,12 +430,12 @@ sig_int <- pfhpa_gene_interaction |>
   tidylog::filter(effect_type == "PFAS and SNP", p.value < 0.1) 
 
 # save file
-write_csv(sig_int |> select(rsid, genes, p.value), 
-          fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
+# write_csv(sig_int |> select(rsid, genes, p.value), 
+#           fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
 
 # Create dataset for viewing #
 pfhpa_gxe_w <- pfhpa_gene_interaction |> 
-    # tidylog::filter(snp %in% sig_int$snp) |>
+  # tidylog::filter(snp %in% sig_int$snp) |>
   tidylog::select(exposure, effect_type,
                   rsid, genes, odds_ratio, p.value, type) |> 
   pivot_wider(names_from = effect_type, values_from = c(odds_ratio, p.value)) 
@@ -402,5 +461,96 @@ pfhpa_gene_interaction |>
        color = "Significance") +
   scale_color_manual(values = c("grey60", "black"))
 
+
+# Final plot
+pfhpa_gene_interaction |> 
+  mutate(gene_snp = str_c(rsid, " (", genes, ")", sep = "")) |>
+  tidylog::filter(snp %in% sig_int$snp) |>  
+  ggplot(aes(y = fct_rev(effect_type), 
+             x = odds_ratio)) +
+  geom_point(position = position_dodge(width = .3)) +
+  geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high), width = 0) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  facet_wrap(~gene_snp, ncol = 1) +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
+  labs(#title = "PFHpA and SNP Interaction",
+    y = NULL,
+    x = "Odds Ratio (95% CI)",
+    color = "Significance") 
+
+```
+
+# Full model- all snps in 1 model (doesn't work- pfhpa is non-sig)
+
+```{r}
+
+final_mod <- clogit(
+  status ~ v1 + v2 + v3 + v4 + v5 +  v6 + 
+    pfas_lg2_PFHpA * (x10_112187282 + #GPAM
+                        x16_53772541 + # FTO 
+                        x19_19434290 + # GATAD2A
+                        x19_54173068 + # TMC4
+                        x22_43928850)  +
+    alcohol_intake + smokestatus +
+    q1_dp_amds_totscore +
+    q1_fdgp7 + 
+    strata(setnum), 
+  data = data_hcc,
+  method = "efron",
+  robust = TRUE) 
+
+table(data_hcc$x22_43928850>.5, data_hcc$x10_112187282 > 0.5) |> 
+  chisq.test()
+
+# Get conf int, select key terms, add metadata 
+fm_ee1 <- final_mod |> 
+  broom::tidy(conf.int = TRUE) |> 
+  mutate(odds_ratio  = exp(estimate), 
+         exp_ci_low  = exp(conf.low),
+         exp_ci_high = exp(conf.high)) |> 
+  tidylog::filter(
+    str_detect(term, "pfas_") |
+      str_detect(term, "x1") |
+      str_detect(term, "x2")) |>
+  mutate(effect_type = if_else(str_detect(term, ":"), 
+                               "Interaction", 
+                               "Main Effect"))
+
+
+# Get cleaned snp and term names
+fm_ee2 <- fm_ee1 |>
+  tidyr::separate_wider_delim(
+    term,
+    delim = ":", 
+    names = c("first_eff", "second_eff"), 
+    too_few = "align_start") |> 
+  mutate(term = if_else(is.na(second_eff), 
+                        first_eff, 
+                        second_eff)) |> 
+  tidylog::select(term, effect_type, everything(), 
+                  -first_eff, -second_eff)
+
+
+# merge SNP names
+fm_ee <- fm_ee2 %>%
+  tidylog::left_join(snp_info, by = c("term" = "snp_name")) |>
+  mutate(gene_snp = if_else(is.na(genes), "PFHpA", 
+                            str_c(rsid, " (", genes, ")", sep = "")))
+
+
+# Plot
+fm_ee |> 
+  # mutate(gene_snp = str_c(rsid, "\n", genes)) |>
+  ggplot(aes(y = effect_type, 
+             x = odds_ratio)) +
+  geom_point(position = position_dodge(width = .3)) +
+  geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high), width = 0) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  facet_wrap(~ gene_snp, scales = "free_y", ncol = 1) +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
+  labs(title = "PFHpA and SNP Interaction",
+       x = "Effect",
+       y = "Odds Ratio",
+       color = "Significance") 
 ```
 

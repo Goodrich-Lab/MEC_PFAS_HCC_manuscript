@@ -76,9 +76,6 @@ eqtl_df_w_clean <- eqtl_df_w |>
 length(unique(eqtl_df_w$gene))-length(unique(eqtl_df_w_clean$gene))
 
 
-
-
-
 # Create rsid/gene key for comptoxai analysis ----
 eqtls_clean <- eqtl_df_w_clean |> 
   group_by(rsid, gene) |> 
@@ -96,7 +93,6 @@ snp_gene_df_l <- snp_gene_df |>
 
 snp_gn_df <- bind_rows(eqtls_clean, snp_gene_df_l)
 
-
 write_csv(snp_gn_df, 
           fs::path(dir_data, 
                    "eQTLs",
@@ -113,6 +109,5 @@ sc_data <- read_csv(
 
 
 table(sc_data$gene %in% eqtl_df_w_clean$gene)
-
 ```
 
