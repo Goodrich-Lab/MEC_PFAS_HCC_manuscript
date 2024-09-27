@@ -430,8 +430,8 @@ sig_int <- pfhpa_gene_interaction |>
   tidylog::filter(effect_type == "PFAS and SNP", p.value < 0.1) 
 
 # save file
-# write_csv(sig_int |> select(rsid, genes, p.value), 
-#           fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
+write_csv(sig_int |> select(rsid, genes, p.value, odds_ratio),
+          fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
 
 # Create dataset for viewing #
 pfhpa_gxe_w <- pfhpa_gene_interaction |> 
