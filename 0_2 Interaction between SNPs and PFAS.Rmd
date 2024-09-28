@@ -152,7 +152,7 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
 ```
 
 ## Analysis 1: PRS risk score
-```{r }
+```{r prs risk score}
 hist(log(data_hcc$prs_wt))
 as.numeric(gtools::quantcut(data_hcc$prs_wt, q = 10))
 # mainmod <- clogit(status ~ pfas_lg2_PFHpA*scale(prs_wt) +
@@ -417,12 +417,9 @@ min(pfhpa_gene_interaction$p_adjusted)
 ```
 
 
-## Analysis2. Full model- all sig snps in 1 model
+## Analysis3. Full model- all sig snps in 1 model
 * Model1: outcome ~ PFHpA * each of all sig snps
-```{r analysis 2}
-
-# Examine PFHpA Interaction results
-```{r}
+```{r analysis 3}
 pfhpa_gene_interaction <- all_result_new |> 
   tidylog::filter(str_detect(exposure, "PFHpA"), 
                   # effect_type == "PFAS and SNP", 
@@ -484,83 +481,8 @@ pfhpa_gene_interaction |>
 
 ```
 
-# Full model- all snps in 1 model (doesn't work- pfhpa is non-sig)
-
-```{r}
-
-final_mod <- clogit(
-  status ~ v1 + v2 + v3 + v4 + v5 +  v6 + 
-    pfas_lg2_PFHpA * (x10_112187282 + #GPAM
-                        x16_53772541 + # FTO 
-                        x19_19434290 + # GATAD2A
-                        x19_54173068 + # TMC4
-                        x22_43928850)  +
-    alcohol_intake + smokestatus +
-    q1_dp_amds_totscore +
-    q1_fdgp7 + 
-    strata(setnum), 
-  data = data_hcc,
-  method = "efron",
-  robust = TRUE) 
-
-table(data_hcc$x22_43928850>.5, data_hcc$x10_112187282 > 0.5) |> 
-  chisq.test()
-
-# Get conf int, select key terms, add metadata 
-fm_ee1 <- final_mod |> 
-  broom::tidy(conf.int = TRUE) |> 
-  mutate(odds_ratio  = exp(estimate), 
-         exp_ci_low  = exp(conf.low),
-         exp_ci_high = exp(conf.high)) |> 
-  tidylog::filter(
-    str_detect(term, "pfas_") |
-      str_detect(term, "x1") |
-      str_detect(term, "x2")) |>
-  mutate(effect_type = if_else(str_detect(term, ":"), 
-                               "Interaction", 
-                               "Main Effect"))
-
-
-# Get cleaned snp and term names
-fm_ee2 <- fm_ee1 |>
-  tidyr::separate_wider_delim(
-    term,
-    delim = ":", 
-    names = c("first_eff", "second_eff"), 
-    too_few = "align_start") |> 
-  mutate(term = if_else(is.na(second_eff), 
-                        first_eff, 
-                        second_eff)) |> 
-  tidylog::select(term, effect_type, everything(), 
-                  -first_eff, -second_eff)%>%
-  mutate(term = str_remove(term, "_scld"))
-
-
-# merge SNP names
-fm_ee <- fm_ee2 %>%
-  tidylog::left_join(snp_info, by = c("term" = "snp_name")) |>
-  mutate(gene_snp = if_else(is.na(genes), "PFHpA", 
-                            str_c(rsid, " (", genes, ")", sep = "")))
-
-
-# Plot
-fm_ee |> 
-  # mutate(gene_snp = str_c(rsid, "\n", genes)) |>
-  ggplot(aes(y = effect_type, 
-             x = odds_ratio)) +
-  geom_point(position = position_dodge(width = .3)) +
-  geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high), width = 0) +
-  geom_vline(xintercept = 1, linetype = "dashed") +
-  facet_wrap(~ gene_snp, scales = "free_y", ncol = 1) +
-  # theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
-  labs(title = "PFHpA and SNP Interaction",
-       y = "Effect",
-       x = "Odds Ratio",
-       color = "Significance") 
-```
-
 ### Associations of PFHpA levels with HCC risk overall (not accounting for genetic risk), and in individuals with and without the significant genetic variants. 
-```{r}
+```{r high vs low contrasts}
 res <- emtrends(final_mod, ~x10_112187282 + #GPAM
                         x16_53772541 + # FTO 
                         x19_19434290 + # GATAD2A
@@ -638,9 +560,9 @@ ggsave(filename = fs::path(dir_figures,
        bg = "white")
 ```
 
-## Analysis3. Full model- SNP score
-* Model3: outcome ~ PFHpA * sum_of_snp(only SNPs with positive interaction with PFHpA)
-```{r model 3}
+## Analysis4. Full model- SNP score
+* Model4: outcome ~ PFHpA * sum_of_snp(only SNPs with positive interaction with PFHpA)
+```{r model 4}
 data_hcc_snp <- data_hcc %>%
   mutate(snp_score = 
            # x10_112187282 + #GPAM
@@ -803,3 +725,4 @@ ggsave(filename = fs::path(dir_figures,
        height = 1.5,
        dpi = 600,
        bg = "white")
+```
