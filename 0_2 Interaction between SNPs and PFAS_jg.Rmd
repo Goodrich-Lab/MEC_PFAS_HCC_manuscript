@@ -27,6 +27,7 @@ source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
+source(here::here("BHRM.g.interaction.R"))
 ```
 
 ## Checking SNPs
@@ -79,66 +80,66 @@ data_analysis_other_hcc_snp <- data_other_hcc %>%
   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
   mutate_at(.vars = vars(snp_name_df$name),
             .funs = list(scld = ~scale(.))) 
-
-data_analysis_hcc_japan_snp <- data_hcc %>%
-  filter(eth == "Japanese American") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-data_analysis_nafld_hcc_japan_snp <- data_nafld_hcc %>%
-  filter(eth == "Japanese American") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-data_analysis_other_hcc_japan_snp <- data_other_hcc %>%
-  filter(eth == "Japanese American") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-data_analysis_hcc_latino_snp <- data_hcc %>%
-  filter(eth == "Latino") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-data_analysis_nafld_hcc_latino_snp <- data_nafld_hcc %>%
-  filter(eth == "Latino") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-data_analysis_other_hcc_latino_snp <- data_other_hcc %>%
-  filter(eth == "Latino") %>%
-  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-  mutate_at(.vars = vars(snp_name_df$name),
-            .funs = list(scld = ~scale(.))) 
-
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>%
-                                             dplyr::select(contains("scld"), -contains("pfas")),
-                                           style = 'grid',
-                                           max.distinct.values = 10, 
-                                           plain.ascii =   FALSE, 
-                                           valid.col = FALSE, 
-                                           headings = FALSE), method = "render")
-
-
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
-                                             dplyr::select(contains("scld"),
-                                                           -contains("pfas")),
-                                           style = 'grid',
-                                           max.distinct.values = 10, 
-                                           plain.ascii =   FALSE, 
-                                           valid.col = FALSE, 
-                                           headings = FALSE), method = "render")
+# 
+# data_analysis_hcc_japan_snp <- data_hcc %>%
+#   filter(eth == "Japanese American") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# data_analysis_nafld_hcc_japan_snp <- data_nafld_hcc %>%
+#   filter(eth == "Japanese American") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# data_analysis_other_hcc_japan_snp <- data_other_hcc %>%
+#   filter(eth == "Japanese American") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# data_analysis_hcc_latino_snp <- data_hcc %>%
+#   filter(eth == "Latino") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# data_analysis_nafld_hcc_latino_snp <- data_nafld_hcc %>%
+#   filter(eth == "Latino") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# data_analysis_other_hcc_latino_snp <- data_other_hcc %>%
+#   filter(eth == "Latino") %>%
+#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+#   mutate_at(.vars = vars(snp_name_df$name),
+#             .funs = list(scld = ~scale(.))) 
+# 
+# summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>%
+#                                              dplyr::select(contains("scld"), -contains("pfas")),
+#                                            style = 'grid',
+#                                            max.distinct.values = 10, 
+#                                            plain.ascii =   FALSE, 
+#                                            valid.col = FALSE, 
+#                                            headings = FALSE), method = "render")
+# 
+# 
+# summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
+#                                              dplyr::select(contains("scld"),
+#                                                            -contains("pfas")),
+#                                            style = 'grid',
+#                                            max.distinct.values = 10, 
+#                                            plain.ascii =   FALSE, 
+#                                            valid.col = FALSE, 
+#                                            headings = FALSE), method = "render")
 
 summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
                                              dplyr::select(contains("scld"),
@@ -151,6 +152,7 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
 
 ```
 
+
 ## Analysis 1: PRS risk score
 ```{r }
 hist(log(data_hcc$prs_wt))
@@ -158,7 +160,7 @@ as.numeric(gtools::quantcut(data_hcc$prs_wt, q = 10))
 # mainmod <- clogit(status ~ pfas_lg2_PFHpA*scale(prs_wt) +
 x = as.numeric()
 
-for(i in 2:20) {
+for(i in 2:10) {
   mainmod1 <- clogit(status ~ pfas_lg2_PFHpA + (gtools::quantcut(data_hcc$prs_wt, q = i)) +
                        v1 + v2 + v3 + v4 + v5 + v6 + 
                        alcohol_intake +
@@ -182,36 +184,31 @@ for(i in 2:20) {
 }
 
 min(x, na.rm = TRUE)
-
+base::plot(x)
 data_hcc |> select(contains("prs")) |> colnames()
 # "prs_uw"         "prs_wt"         "prs_uw_cat"     "prs_wt_cat"     "prs_uw_median"  "prs_wt_median"  "prs_uw_tertile"
 ```
 
 
-# Analysis 2: Individual SNPS
+# Analysis 2: All SNPS
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
 # 1. Set Covariates ----
 # Covariates for main exposure outcome associations
-covariate_input <- " alcohol_intake + smokestatus + q1_dp_amds_totscore + 
-q1_fdgp7"
+covariate_input <- " alcohol_intake + smokestatus + q1_dp_amds_totscore + q1_fdgp7"
 
-
-# This was the original model before correcting the covariates
-# covariate_input <- " bmi +  smokestatus + alcohol_intake + diabetes"
 
 # create dataframe with names of dependent vars (PFAS) 
 pfas_names <- tibble(exposure = pfas_name)
 
-## create dataframe with names of PRS vars ----
+## create dataframe with names of SNP vars ----
 snp_name <- tibble(snp = snp_name_scld)
 
 pfas_snp <- expand_grid(pfas_names, snp_name) %>%
   mutate(pfas_snp = paste(exposure,"*",snp)) 
 
 # Get Model covariates 
-covar_names <- tibble(
-  covariates =  covariate_input)
+covar_names <- tibble(covariates =  covariate_input)
 
 # 2. Make all clogit formulas ----
 
