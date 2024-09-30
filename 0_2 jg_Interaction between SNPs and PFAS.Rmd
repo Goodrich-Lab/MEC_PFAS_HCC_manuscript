@@ -80,6 +80,7 @@ data_analysis_other_hcc_snp <- data_other_hcc %>%
   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
   mutate_at(.vars = vars(snp_name_df$name),
             .funs = list(scld = ~scale(.))) 
+
 # 
 # data_analysis_hcc_japan_snp <- data_hcc %>%
 #   filter(eth == "Japanese American") %>%
@@ -141,6 +142,7 @@ data_analysis_other_hcc_snp <- data_other_hcc %>%
 #                                            valid.col = FALSE, 
 #                                            headings = FALSE), method = "render")
 
+
 summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
                                              dplyr::select(contains("scld"),
                                                            -contains("pfas")),
@@ -160,7 +162,9 @@ as.numeric(gtools::quantcut(data_hcc$prs_wt, q = 10))
 # mainmod <- clogit(status ~ pfas_lg2_PFHpA*scale(prs_wt) +
 x = as.numeric()
 
+
 for(i in 2:10) {
+
   mainmod1 <- clogit(status ~ pfas_lg2_PFHpA + (gtools::quantcut(data_hcc$prs_wt, q = i)) +
                        v1 + v2 + v3 + v4 + v5 + v6 + 
                        alcohol_intake +
@@ -190,7 +194,9 @@ data_hcc |> select(contains("prs")) |> colnames()
 ```
 
 
+
 # Analysis 2: All SNPS
+
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
 # 1. Set Covariates ----
@@ -427,8 +433,8 @@ sig_int <- pfhpa_gene_interaction |>
   tidylog::filter(effect_type == "PFAS and SNP", p.value < 0.1) 
 
 # save file
-write_csv(sig_int |> select(rsid, genes, p.value, odds_ratio),
-          fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
+# write_csv(sig_int |> select(rsid, genes, p.value), 
+#           fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
 
 # Create dataset for viewing #
 pfhpa_gxe_w <- pfhpa_gene_interaction |> 
@@ -480,7 +486,6 @@ pfhpa_gene_interaction |>
 # Full model- all snps in 1 model (doesn't work- pfhpa is non-sig)
 
 ```{r}
-
 final_mod <- clogit(
   status ~ v1 + v2 + v3 + v4 + v5 +  v6 + 
     pfas_lg2_PFHpA * (x10_112187282 + #GPAM
@@ -498,6 +503,7 @@ final_mod <- clogit(
 
 table(data_hcc$x22_43928850>.5, data_hcc$x10_112187282 > 0.5) |> 
   chisq.test()
+
 
 # Get conf int, select key terms, add metadata 
 fm_ee1 <- final_mod |> 

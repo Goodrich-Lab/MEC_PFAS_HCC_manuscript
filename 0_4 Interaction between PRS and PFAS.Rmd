@@ -1,0 +1,338 @@
+---
+title: 'MEC analysis'
+subtitle: "Association of interactions between PRS and PFAS with HCC"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup snp and pfas, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!load_data.R")))
+
+data_analysis_hcc_prs <- data_hcc %>%
+  mutate(prs_uw_scld = prs_uw %>% scale() %>% as.vector()) 
+
+data_analysis_hcc_japan_prs <- data_hcc%>%
+  filter(eth == "Japanese American") %>%
+  mutate(prs_uw_scld = prs_uw %>% scale() %>% as.vector()) 
+
+data_analysis_hcc_latino_prs <- data_hcc%>%
+  filter(eth == "Latino") %>%
+  mutate(prs_uw_scld = prs_uw %>% scale() %>% as.vector()) 
+
+```
+
+## Analysis1: HCC
+* Model1: outcome ~ one pfas + one SNP + pfas * snp
+```{r interaction between PFAS and SNPs hcc}
+
+covariate_input <- " alcohol_intake +  smokestatus + q1_dp_amds_totscore + q1_fdgp7"
+# covariate_input <- " bmi +  smokestatus + alcohol_intake + diabetes"
+## create dataframe with names of dependent vars (PFAS) ----
+pfas_names <- tibble(exposure = pfas_name)
+
+## create dataframe with names of PRS vars ----
+prs_name <- tibble(prs = c("prs_uw_tertile", "prs_uw_scld"))
+
+pfas_prs <- expand_grid(pfas_names, prs_name) %>%
+  mutate(pfas_prs = paste(exposure,"*",prs)) 
+
+# Get Model covariates 
+covar_names <- tibble(
+  covariates =  covariate_input)
+
+# Make all clogit formulas
+ind_vars <- expand_grid(pfas_prs,covar_names) |>  
+  mutate(formula = paste("status ~ v1 + v2 + v3 + v4 + v5 + v6 + ", 
+                         "+", pfas_prs,
+                         "+", covariates, 
+                         "+strata(setnum)") |>
+           str_replace("\\+  \\+", " + "))
+
+ind_vars$clogit_out <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis_hcc_prs,
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+
+ind_vars$clogit_out1 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis_hcc_japan_prs,
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+
+ind_vars$clogit_out2 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis_hcc_latino_prs,
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit"))
+
+# Get final data -------------------
+all_results_df_hcc <- ind_vars %>% 
+  unnest(clogit_out) %>% 
+  dplyr::select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+
+all_results_df_hcc_japan <- ind_vars %>% 
+  unnest(clogit_out1) %>% 
+  dplyr::select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+
+
+
+all_results_df_hcc_latino <- ind_vars %>% 
+  unnest(clogit_out2) %>% 
+  dplyr::select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+
+## Adding modify variable names, add type or category info for data----
+  
+
+### All races
+all_results_df_hcc1 <- all_results_df_hcc %>% 
+  filter(grepl("lg2",term)|grepl("prs", term)) %>%
+  filter(!grepl("scld", prs))%>%
+  dplyr::select(exposure, prs, term, p.value, odds_ratio, contains("exp_"))
+
+
+all_results_df_hcc2 <- all_results_df_hcc1 |> 
+  mutate(
+         effect_type = case_when(str_detect(term, ":")   ~ "PFAS and PRS",
+                                 str_detect(term, "^prs")   ~ "PRS",
+                                 TRUE ~ "PFAS")) |>
+  filter(!is.na(effect_type)) 
+
+all_results_df_hcc3 <- all_results_df_hcc2 %>% 
+  group_by(exposure) %>%
+  mutate( p_adjusted = p.adjust(p.value, method = "fdr"),
+         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                         p.value < 0.05 ~ "Sig.",
+                         TRUE ~ "Not Sig.")) %>%
+  ungroup() 
+  
+### Japanese American
+all_results_df_hcc_japan1 <- all_results_df_hcc_japan %>% 
+  filter(!grepl("scld", prs))%>%
+  filter(grepl("lg2",term)|grepl("prs", term)) %>%
+  dplyr::select(exposure, prs,term, p.value, odds_ratio, contains("exp_"))
+
+
+all_results_df_hcc_japan2 <- all_results_df_hcc_japan1 |> 
+  mutate(
+         effect_type = case_when(str_detect(term, ":")   ~ "PFAS and PRS",
+                                 str_detect(term, "^prs")   ~ "PRS",
+                                 TRUE ~ "PFAS")) |>
+  filter(!is.na(effect_type)) 
+
+all_results_df_hcc_japan3 <- all_results_df_hcc_japan2 %>% 
+  group_by(exposure) %>%
+  mutate(
+         p_adjusted = p.adjust(p.value, method = "fdr"),
+         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                         p.value < 0.05 ~ "Sig.",
+                         TRUE ~ "Not Sig.")) %>%
+  ungroup()
+## Latino 
+
+all_results_df_hcc_latino1 <- all_results_df_hcc_latino %>% 
+  filter(!grepl("scld", prs))%>%
+  filter(grepl("lg2",term)|grepl("prs", term)) %>%
+  dplyr::select(exposure, prs,term, p.value, odds_ratio, contains("exp_"))
+
+
+all_results_df_hcc_latino2 <- all_results_df_hcc_latino1 |> 
+  mutate(
+         effect_type = case_when(str_detect(term, ":")   ~ "PFAS and PRS",
+                                 str_detect(term, "^prs")   ~ "PRS",
+                                 TRUE ~ "PFAS")) |>
+  filter(!is.na(effect_type)) 
+
+all_results_df_hcc_latino3 <- all_results_df_hcc_latino2 %>% 
+  group_by(exposure) %>%
+  mutate(
+         p_adjusted = p.adjust(p.value, method = "fdr"),
+         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                         p.value < 0.05 ~ "Sig.",
+                         TRUE ~ "Not Sig.")) %>%
+    ungroup()
+
+all_result <- all_results_df_hcc3 %>%
+  mutate(type = "All races") %>%
+  bind_rows(all_results_df_hcc_japan3 %>% 
+              mutate (type = "Japanese American")) %>%
+  bind_rows(all_results_df_hcc_latino3 %>%
+              mutate (type = "Latino"))%>%
+  filter(!grepl("scld", prs)) %>%
+  mutate(
+         effect_type = case_when(str_detect(term, ":")   ~ "PFAS and PRS",
+                                 str_detect(term, "prs")   ~ "Genetic Risk",
+                                 TRUE ~ "PFAS and PRS"), 
+         genetic_risk = case_when(str_detect(term, "tertile3") ~ "High", 
+                                  str_detect(term, "tertile2") ~ "Medium",
+                                  TRUE ~ "Low") |>
+           fct_relevel(c("Low", "Medium", "High")))%>%
+  mutate(color = case_when(p.value < 0.05 ~ "red", TRUE ~ "black"))
+
+# writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
+```
+
+# Fig. Interaction of PFAS and PRS (scaled)(All races)
+```{r Interaction of PFAS and PRS (scaled), fig.width=10, fig.height=5}
+all_result_scld <- all_results_df_hcc %>% 
+  filter(grepl("lg2",term)|grepl("prs", term)) %>%
+  filter(grepl("scld", prs))%>%
+  mutate(type = "Overall") %>%
+  bind_rows(all_results_df_hcc_japan %>%
+              filter(grepl("lg2",term)|grepl("prs", term)) %>%
+              filter(grepl("scld", prs))%>%
+              mutate(type = "Japanese American")) %>%
+  bind_rows(all_results_df_hcc_latino %>%
+              filter(grepl("lg2",term)|grepl("prs", term)) %>%
+              filter(grepl("scld", prs))%>%
+              mutate(type = "Latino"))%>%
+  dplyr::select(type,exposure, prs, term, p.value, odds_ratio, contains("exp_"))%>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                         p.value < 0.05 ~ "Sig.",
+                         TRUE ~ "Not Sig."))%>%
+  mutate(exposure = str_remove(exposure, "pfas_lg2_"))%>%
+  rename(pfas_name = exposure) %>%
+  mutate(pfas_name = case_when(pfas_name == "4H_PFBA" ~ "4H-PFBA",
+                               pfas_name == "10_2_FToH" ~ "10:2 FTOH",
+                               pfas_name == "2_aminohexafluoropropan_2_ol" ~ "2-Aminohexafluoropropan-2-ol",
+                               pfas_name == "Me_PFHxA" ~ "MePFHxA",
+                               TRUE ~ pfas_name),
+         )
+
+numeric_cols <- which(sapply(all_result_scld, is.numeric))
+
+datatable(all_result_scld, filter = "top")%>%
+  formatSignif(columns = numeric_cols, digits = 3)
+
+(plot <- all_result_scld  %>%
+  filter(type== "Overall"& str_detect(term,":"))%>%
+  ggplot(aes(x = reorder(pfas_name, odds_ratio),y = odds_ratio, color = sig)) +
+  geom_point(size = 1) +
+  geom_errorbar(aes(ymin = exp_ci_low,
+                    ymax = exp_ci_high),
+                width = 0) +
+  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+  ylab("Odds Ratio (95% CI)") +
+  # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")), scales = "free_y")+
+  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+ 
+  theme(panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 15),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.title.y=element_blank(),
+        axis.line.y = element_line(color = "black"),
+        legend.position = "bottom",
+        legend.title = element_blank())+
+  coord_flip() +
+  scale_color_manual(values = c("red","grey")))
+
+```
+
+# Fig. Interaction of PFAS and PRS (tertiled) (All races)
+```{r Interaction of PFAS and PRS,fig.width=10, fig.height= 12}
+# Plot PFOS effects
+interaction_term_name_ref <- paste0(pfas_name, ":", "prs_uw_tertile1")
+intercept_data<- tibble(exposure = rep(pfas_name, 2), 
+                        prs = rep("prs_uw_tertile", 2*length(pfas_name)), 
+                        term = c(rep("prs_uw_tertile1", length(pfas_name)), interaction_term_name_ref), 
+                        odds_ratio = rep(1,2*length(pfas_name)))
+
+all_results_df_hcc4 <- all_results_df_hcc3 %>% 
+  bind_rows(intercept_data) %>% 
+  filter(grepl("lg2",term)|grepl("tertile", term)) %>%
+  select(exposure, term, p.value, odds_ratio, contains("exp_")) %>%
+  mutate(exposure = str_remove(exposure, "pfas_lg2_"))%>%
+  mutate(
+         effect_type = case_when(str_detect(term, ":")   ~ "PFAS and PRS",
+                                 str_detect(term, "prs")   ~ "Genetic Risk",
+                                 TRUE ~ "PFAS and PRS"), 
+         genetic_risk = case_when(str_detect(term, "tertile3") ~ "High", 
+                                  str_detect(term, "tertile2") ~ "Medium",
+                                  TRUE ~ "Low") |>
+           fct_relevel(c("Low", "Medium", "High")), 
+         sig = if_else(p.value < 0.05, "Sig.", "Not Sig.")) |>
+  filter(!is.na(effect_type)) %>%
+  mutate(color = case_when(p.value < 0.05 ~ "red", TRUE ~ "black"))
+
+numeric_cols <- which(sapply(all_results_df_hcc4, is.numeric))
+
+datatable(all_results_df_hcc4, filter = "top")%>%
+  formatSignif(columns = numeric_cols, digits = 3)
+
+(pfas_grs_int <-  ggplot(all_results_df_hcc4 |> filter(str_detect(term, ":")),
+       aes(x = genetic_risk, y = odds_ratio, color = color)) +
+  geom_errorbar(aes(ymin = exp_ci_low, ymax = exp_ci_high),
+                width = 0, position = position_dodge(width = 1)) +
+  geom_point(size = 1, position = position_dodge(width = 1)) + 
+  geom_hline(yintercept = 1, linetype = 1, color = "grey50") +
+  facet_wrap( ~ exposure, scales = "free", ncol = 4)+
+  theme(#axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+        legend.position = "none",
+        panel.background = element_rect(fill="white"), 
+        strip.background = element_rect(fill = "white"),
+        strip.text.y = element_text(angle = 0, hjust = 0),
+        # strip.text.x = element_blank(),
+        text = element_text(size = 15),
+        # axis.title.x=element_blank(),
+        axis.line.x = element_line(color = "black"),
+        axis.line.y = element_line(color = "black")) +
+    ylab("OR (95% CI) per\ndoubling of PFAS") + 
+      xlab("NAFLD PRS Tertile") +
+  scale_color_manual(values = c("black", "red")))
+```
+
