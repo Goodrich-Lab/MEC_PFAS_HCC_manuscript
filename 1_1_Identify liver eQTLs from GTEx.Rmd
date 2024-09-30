@@ -10,28 +10,34 @@ output: html_document
 source(here::here("!libraries.R"))
 source(here::here("!directories.R"))
 
-# Set MEC SNPS
-mec_PFAS_snps <- c("rs56094641", "rs4808199", "rs641738", "rs738408", "rs4918722")
-
 # read file
 snp_gene_df <- read_csv(
-  fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
+  fs::path(dir_result, 
+           "Significant PFHpA x SNP interactions.csv"))
 
+# Select positive interactions only
+snp_gene_df <- snp_gene_df |> 
+  tidylog::filter(odds_ratio > 1)
+
+epiomics::meet_m
 
 # Read eQTLs from FIVEx
 eqtl_df <- readxl::read_xlsx(fs::path(dir_data,
                                       "eQTLs",
                                       "raw_eqtls_from_fivex.xlsx")) 
 
-eqtl_df_w <- eqtl_df |>
-  dplyr::summarise(n = dplyr::n(), .by = c(rsid, colname)) |>
-  dplyr::filter(n > 1L) 
+# eqtl_df_w <- eqtl_df |>
+#   dplyr::summarise(n = dplyr::n(), .by = c(rsid, colname)) |>
+#   tidylog::filter(n > 1L, rsid %in% snp_gene_df$rsid) 
 
 
 eqtl_df_w <- eqtl_df |>
   pivot_wider(names_from = "colname", values_from = "value") |> 
   janitor::clean_names() |> 
-  select(-group)
+  select(-group) |> 
+  tidylog::filter(rsid %in% snp_gene_df$rsid) 
+
+length(unique(eqtl_df_w$rsid))
 
 # Change to numeric values
 eqtl_df_w <- eqtl_df_w |> 
@@ -88,7 +94,7 @@ eqtls_clean <- eqtl_df_w_clean |>
 snp_gene_df_l <- snp_gene_df |>
   dplyr::mutate(gene = strsplit(genes, "; ")) |>
   tidyr::unnest(cols = gene) |> 
-  dplyr::select(-genes, -p.value) |> 
+  dplyr::select(-genes, -p.value, -odds_ratio) |> 
   mutate(rel = "Gene: SNP associated gene")
 
 snp_gn_df <- bind_rows(eqtls_clean, snp_gene_df_l)
@@ -97,6 +103,7 @@ write_csv(snp_gn_df,
           fs::path(dir_data, 
                    "eQTLs",
                    "eqtl_rsid_pairs.csv"))
+length(unique(snp_gn_df$rsid))
 ```
 
 
@@ -107,7 +114,8 @@ sc_data <- read_csv(
            "6_scRNAseq organoid data",
            "Excel Supplement B genes brittneys paper.csv"))
 
-
+length(unique(sc_data$gene))/nrow(sc_data)
+table(sc_data$cell_type)
 table(sc_data$gene %in% eqtl_df_w_clean$gene)
 ```
 

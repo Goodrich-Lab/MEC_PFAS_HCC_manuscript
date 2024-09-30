@@ -27,7 +27,6 @@ source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
-source(here::here("BHRM.g.interaction.R"))
 ```
 
 ## Checking SNPs
@@ -81,67 +80,65 @@ data_analysis_other_hcc_snp <- data_other_hcc %>%
   mutate_at(.vars = vars(snp_name_df$name),
             .funs = list(scld = ~scale(.))) 
 
-# 
-# data_analysis_hcc_japan_snp <- data_hcc %>%
-#   filter(eth == "Japanese American") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# data_analysis_nafld_hcc_japan_snp <- data_nafld_hcc %>%
-#   filter(eth == "Japanese American") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# data_analysis_other_hcc_japan_snp <- data_other_hcc %>%
-#   filter(eth == "Japanese American") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# data_analysis_hcc_latino_snp <- data_hcc %>%
-#   filter(eth == "Latino") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# data_analysis_nafld_hcc_latino_snp <- data_nafld_hcc %>%
-#   filter(eth == "Latino") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# data_analysis_other_hcc_latino_snp <- data_other_hcc %>%
-#   filter(eth == "Latino") %>%
-#   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
-#   #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
-#   mutate_at(.vars = vars(snp_name_df$name),
-#             .funs = list(scld = ~scale(.))) 
-# 
-# summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>%
-#                                              dplyr::select(contains("scld"), -contains("pfas")),
-#                                            style = 'grid',
-#                                            max.distinct.values = 10, 
-#                                            plain.ascii =   FALSE, 
-#                                            valid.col = FALSE, 
-#                                            headings = FALSE), method = "render")
-# 
-# 
-# summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
-#                                              dplyr::select(contains("scld"),
-#                                                            -contains("pfas")),
-#                                            style = 'grid',
-#                                            max.distinct.values = 10, 
-#                                            plain.ascii =   FALSE, 
-#                                            valid.col = FALSE, 
-#                                            headings = FALSE), method = "render")
+data_analysis_hcc_japan_snp <- data_hcc %>%
+  filter(eth == "Japanese American") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
 
+data_analysis_nafld_hcc_japan_snp <- data_nafld_hcc %>%
+  filter(eth == "Japanese American") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_other_hcc_japan_snp <- data_other_hcc %>%
+  filter(eth == "Japanese American") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_hcc_latino_snp <- data_hcc %>%
+  filter(eth == "Latino") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_nafld_hcc_latino_snp <- data_nafld_hcc %>%
+  filter(eth == "Latino") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_other_hcc_latino_snp <- data_other_hcc %>%
+  filter(eth == "Latino") %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_japan_snp%>%
+                                             dplyr::select(contains("scld"), -contains("pfas")),
+                                           style = 'grid',
+                                           max.distinct.values = 10, 
+                                           plain.ascii =   FALSE, 
+                                           valid.col = FALSE, 
+                                           headings = FALSE), method = "render")
+
+
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
+                                             dplyr::select(contains("scld"),
+                                                           -contains("pfas")),
+                                           style = 'grid',
+                                           max.distinct.values = 10, 
+                                           plain.ascii =   FALSE, 
+                                           valid.col = FALSE, 
+                                           headings = FALSE), method = "render")
 
 summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
                                              dplyr::select(contains("scld"),
@@ -154,17 +151,14 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
 
 ```
 
-
-## Analysis 1: PRS risk score
-```{r }
+# 1: PRS risk score interaction
+```{r PRS interaction}
 hist(log(data_hcc$prs_wt))
 as.numeric(gtools::quantcut(data_hcc$prs_wt, q = 10))
 # mainmod <- clogit(status ~ pfas_lg2_PFHpA*scale(prs_wt) +
 x = as.numeric()
 
-
-for(i in 2:10) {
-
+for(i in 2:8) {
   mainmod1 <- clogit(status ~ pfas_lg2_PFHpA + (gtools::quantcut(data_hcc$prs_wt, q = i)) +
                        v1 + v2 + v3 + v4 + v5 + v6 + 
                        alcohol_intake +
@@ -188,26 +182,26 @@ for(i in 2:10) {
 }
 
 min(x, na.rm = TRUE)
-base::plot(x)
+
 data_hcc |> select(contains("prs")) |> colnames()
 # "prs_uw"         "prs_wt"         "prs_uw_cat"     "prs_wt_cat"     "prs_uw_median"  "prs_wt_median"  "prs_uw_tertile"
 ```
 
 
-
-# Analysis 2: All SNPS
-
+# 2A. Individual SNP interaction models
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
 # 1. Set Covariates ----
 # Covariates for main exposure outcome associations
 covariate_input <- " alcohol_intake + smokestatus + q1_dp_amds_totscore + q1_fdgp7"
 
+# This was the original model before correcting the covariates
+# covariate_input <- " bmi +  smokestatus + alcohol_intake + diabetes"
 
 # create dataframe with names of dependent vars (PFAS) 
 pfas_names <- tibble(exposure = pfas_name)
 
-## create dataframe with names of SNP vars ----
+## create dataframe with names of PRS vars ----
 snp_name <- tibble(snp = snp_name_scld)
 
 pfas_snp <- expand_grid(pfas_names, snp_name) %>%
@@ -239,35 +233,35 @@ ind_vars$clogit_out <- map(
       exp_ci_high = exp(conf.high),
       model_type = "clogit")) 
 
-
-ind_vars$clogit_out1 <- map(
-  ind_vars$formula, 
-  ~clogit(as.formula(.),
-          data = data_analysis_hcc_japan_snp,
-          method = "efron",
-          robust = TRUE
-  ) %>%
-    tidy(., conf.int = TRUE, level = 0.95) %>% 
-    mutate(
-      odds_ratio = exp(estimate),
-      exp_ci_low = exp(conf.low),
-      exp_ci_high = exp(conf.high),
-      model_type = "clogit")) 
-
-
-ind_vars$clogit_out2 <- map(
-  ind_vars$formula, 
-  ~clogit(as.formula(.),
-          data = data_analysis_hcc_latino_snp,
-          method = "efron",
-          robust = TRUE
-  ) %>%
-    tidy(., conf.int = TRUE, level = 0.95) %>% 
-    mutate(
-      odds_ratio = exp(estimate),
-      exp_ci_low = exp(conf.low),
-      exp_ci_high = exp(conf.high),
-      model_type = "clogit"))
+# Ethnicity specific ----
+# ind_vars$clogit_out1 <- map(
+#   ind_vars$formula, 
+#   ~clogit(as.formula(.),
+#           data = data_analysis_hcc_japan_snp,
+#           method = "efron",
+#           robust = TRUE
+#   ) %>%
+#     tidy(., conf.int = TRUE, level = 0.95) %>% 
+#     mutate(
+#       odds_ratio = exp(estimate),
+#       exp_ci_low = exp(conf.low),
+#       exp_ci_high = exp(conf.high),
+#       model_type = "clogit")) 
+# 
+# 
+# ind_vars$clogit_out2 <- map(
+#   ind_vars$formula, 
+#   ~clogit(as.formula(.),
+#           data = data_analysis_hcc_latino_snp,
+#           method = "efron",
+#           robust = TRUE
+#   ) %>%
+#     tidy(., conf.int = TRUE, level = 0.95) %>% 
+#     mutate(
+#       odds_ratio = exp(estimate),
+#       exp_ci_low = exp(conf.low),
+#       exp_ci_high = exp(conf.high),
+#       model_type = "clogit"))
 
 # Get final data -------------------
 all_results_df_hcc <- ind_vars %>% 
@@ -277,21 +271,21 @@ all_results_df_hcc <- ind_vars %>%
                          p.value >= 0.05 ~ "Not Sig"),
          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
 
-all_results_df_hcc_japan <- ind_vars %>% 
-  unnest(clogit_out1) %>% 
-  dplyr::select(model_type, covariates, everything()) %>%
-  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
-                         p.value >= 0.05 ~ "Not Sig"),
-         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
-
-
-
-all_results_df_hcc_latino <- ind_vars %>% 
-  unnest(clogit_out2) %>% 
-  dplyr::select(model_type, covariates, everything()) %>%
-  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
-                         p.value >= 0.05 ~ "Not Sig"),
-         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+# all_results_df_hcc_japan <- ind_vars %>% 
+#   unnest(clogit_out1) %>% 
+#   dplyr::select(model_type, covariates, everything()) %>%
+#   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+#                          p.value >= 0.05 ~ "Not Sig"),
+#          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+# 
+# 
+# 
+# all_results_df_hcc_latino <- ind_vars %>% 
+#   unnest(clogit_out2) %>% 
+#   dplyr::select(model_type, covariates, everything()) %>%
+#   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+#                          p.value >= 0.05 ~ "Not Sig"),
+#          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
 
 ## Adding modify variable names, add type or category info for data-----
 
@@ -322,66 +316,66 @@ all_results_df_hcc3 <- all_results_df_hcc2 %>%
   tidylog::left_join(snp_info%>%
                        dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name"))
 
-### Japanese American
-all_results_df_hcc_japan1 <- all_results_df_hcc_japan %>% 
-  # bind_rows(intercept_data) %>% 
-  filter(grepl("lg2",term)|grepl("x", term)) %>%
-  dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
-  mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
-
-
-all_results_df_hcc_japan2 <- all_results_df_hcc_japan1 |> 
-  mutate(
-    effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
-                            str_detect(term, "^x")   ~ "Genetic Risk",
-                            TRUE ~ "PFAS")) |>
-  filter(!is.na(effect_type)) 
-
-all_results_df_hcc_japan3 <- all_results_df_hcc_japan2 %>% 
-  filter(!grepl("x14", term)) |>
-  group_by(pfas_name) %>%
-  mutate(snp = str_replace_all(snp, "_scld", ""),
-         p_adjusted = p.adjust(p.value, method = "fdr"),
-         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
-                         p.value < 0.05 ~ "Sig.",
-                         TRUE ~ "Not Sig.")) %>%
-  tidylog::left_join(snp_info%>%
-                       dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
-  ungroup()
-## Latino 
-
-all_results_df_hcc_latino1 <- all_results_df_hcc_latino %>% 
-  # bind_rows(intercept_data) %>% 
-  filter(grepl("lg2",term)|grepl("x", term)) %>%
-  dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
-  mutate(pfas_name = str_remove(exposure, "pfas_lg2_")) 
-
-
-all_results_df_hcc_latino2 <- all_results_df_hcc_latino1 |> 
-  mutate(
-    effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
-                            str_detect(term, "^x")   ~ "Genetic Risk",
-                            TRUE ~ "PFAS")) |>
-  filter(!is.na(effect_type)) 
-
-all_results_df_hcc_latino3 <- all_results_df_hcc_latino2 %>% 
-  filter(!grepl("x14", term)) |>
-  group_by(pfas_name) %>%
-  mutate(snp = str_replace_all(snp, "_scld", ""),
-         p_adjusted = p.adjust(p.value, method = "fdr"),
-         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
-                         p.value < 0.05 ~ "Sig.",
-                         TRUE ~ "Not Sig.")) %>%
-  tidylog::left_join(snp_info%>%
-                       dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
-  ungroup()
+# ### Japanese American
+# all_results_df_hcc_japan1 <- all_results_df_hcc_japan %>% 
+#   # bind_rows(intercept_data) %>% 
+#   filter(grepl("lg2",term)|grepl("x", term)) %>%
+#   dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+#   mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
+# 
+# 
+# all_results_df_hcc_japan2 <- all_results_df_hcc_japan1 |> 
+#   mutate(
+#     effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
+#                             str_detect(term, "^x")   ~ "Genetic Risk",
+#                             TRUE ~ "PFAS")) |>
+#   filter(!is.na(effect_type)) 
+# 
+# all_results_df_hcc_japan3 <- all_results_df_hcc_japan2 %>% 
+#   filter(!grepl("x14", term)) |>
+#   group_by(pfas_name) %>%
+#   mutate(snp = str_replace_all(snp, "_scld", ""),
+#          p_adjusted = p.adjust(p.value, method = "fdr"),
+#          sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+#                          p.value < 0.05 ~ "Sig.",
+#                          TRUE ~ "Not Sig.")) %>%
+#   tidylog::left_join(snp_info%>%
+#                        dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+#   ungroup()
+# ## Latino 
+# 
+# all_results_df_hcc_latino1 <- all_results_df_hcc_latino %>% 
+#   # bind_rows(intercept_data) %>% 
+#   filter(grepl("lg2",term)|grepl("x", term)) %>%
+#   dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+#   mutate(pfas_name = str_remove(exposure, "pfas_lg2_")) 
+# 
+# 
+# all_results_df_hcc_latino2 <- all_results_df_hcc_latino1 |> 
+#   mutate(
+#     effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
+#                             str_detect(term, "^x")   ~ "Genetic Risk",
+#                             TRUE ~ "PFAS")) |>
+#   filter(!is.na(effect_type)) 
+# 
+# all_results_df_hcc_latino3 <- all_results_df_hcc_latino2 %>% 
+#   filter(!grepl("x14", term)) |>
+#   group_by(pfas_name) %>%
+#   mutate(snp = str_replace_all(snp, "_scld", ""),
+#          p_adjusted = p.adjust(p.value, method = "fdr"),
+#          sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+#                          p.value < 0.05 ~ "Sig.",
+#                          TRUE ~ "Not Sig.")) %>%
+#   tidylog::left_join(snp_info%>%
+#                        dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+#   ungroup()
 
 all_result <- all_results_df_hcc3 %>%
   mutate(type = "All races") %>%
-  bind_rows(all_results_df_hcc_japan3 %>% 
-              mutate (type = "Japanese American")) %>%
-  bind_rows(all_results_df_hcc_latino3 %>%
-              mutate (type = "Latino"))%>%
+  # bind_rows(all_results_df_hcc_japan3 %>% 
+  #             mutate (type = "Japanese American")) %>%
+  # bind_rows(all_results_df_hcc_latino3 %>%
+  #             mutate (type = "Latino"))%>%
   mutate(name_plot  = case_when(effect_type == "PFAS" ~ paste0(genes, "(", " PFAS Main Effect)"),
                                 effect_type == "Genetic Risk" ~ paste0(genes, " Main Effect"),
                                 effect_type == "PFAS and SNP" ~ paste0(genes, "*",
@@ -389,10 +383,10 @@ all_result <- all_results_df_hcc3 %>%
 
 all_result_new <- all_results_df_hcc3 %>%
   mutate(type = "All races") %>%
-  bind_rows(all_results_df_hcc_japan3 %>% 
-              mutate (type = "Japanese American")) %>%
-  bind_rows(all_results_df_hcc_latino3 %>%
-              mutate (type = "Latino"))%>%
+  # bind_rows(all_results_df_hcc_japan3 %>% 
+  #             mutate (type = "Japanese American")) %>%
+  # bind_rows(all_results_df_hcc_latino3 %>%
+  #             mutate (type = "Latino"))%>%
   mutate(name_plot  = case_when(effect_type == "PFAS" ~ paste0(snp, " (", "PFAS Main Effect)"),
                                 effect_type == "Genetic Risk" ~ paste0(snp, " Main Effect"),
                                 effect_type == "PFAS and SNP" ~ paste0(snp, "*",
@@ -419,9 +413,8 @@ min(pfhpa_gene_interaction$p_adjusted)
 # writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
 ```
 
-
-# Examine PFHpA Interaction results
-```{r}
+## 2B. Examine PFHpA Interaction results 
+```{r plot pfhpa interactions}
 pfhpa_gene_interaction <- all_result_new |> 
   tidylog::filter(str_detect(exposure, "PFHpA"), 
                   # effect_type == "PFAS and SNP", 
@@ -433,7 +426,7 @@ sig_int <- pfhpa_gene_interaction |>
   tidylog::filter(effect_type == "PFAS and SNP", p.value < 0.1) 
 
 # save file
-# write_csv(sig_int |> select(rsid, genes, p.value), 
+# write_csv(sig_int |> select(rsid, genes, p.value, odds_ratio),
 #           fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
 
 # Create dataset for viewing #
@@ -483,8 +476,8 @@ pfhpa_gene_interaction |>
 
 ```
 
-# Full model- all snps in 1 model (doesn't work- pfhpa is non-sig)
 
+# 2C. Single model- all snps in 1 model 
 ```{r}
 final_mod <- clogit(
   status ~ v1 + v2 + v3 + v4 + v5 +  v6 + 
@@ -503,7 +496,6 @@ final_mod <- clogit(
 
 table(data_hcc$x22_43928850>.5, data_hcc$x10_112187282 > 0.5) |> 
   chisq.test()
-
 
 # Get conf int, select key terms, add metadata 
 fm_ee1 <- final_mod |> 
@@ -555,5 +547,55 @@ fm_ee |>
        x = "Effect",
        y = "Odds Ratio",
        color = "Significance") 
+```
+
+
+# 3. BHRM-g interaction model
+```{r}
+# BHRM-g interaction model
+
+# X: Exposure
+E = data_hcc |> 
+  tidylog::select(pfas_lg2_PFHpA) |>
+  mutate(pfas_lg2_PFHpA = scale(pfas_lg2_PFHpA) |> as.numeric()) |>
+  as.matrix()
+
+G = data_hcc |> 
+  tidylog::select(all_of(snp_name_df$name)) |>
+  mutate(across(everything(), ~scale(.) |> as.numeric())) |> 
+  as.matrix()
+
+# Y: Outcome 
+Y = data_hcc |> 
+  tidylog::select(status) |> 
+  as.matrix()
+
+# U: Confounders 
+# note- since this is logistic (not clogit), we need to include matching factors
+U = data_hcc |> 
+  tidylog::select(alcohol_intake,
+                         smokestatus, 
+                         q1_dp_amds_totscore,
+                         q1_fdgp7, 
+                  studyarea, sex, eth, q1_byr) |> 
+  fastDummies::dummy_cols(select_columns = c("smokestatus", 
+                                             "studyarea", 
+                                             "sex", 
+                                             "eth"),
+                          remove_selected_columns = TRUE, 
+                          remove_most_frequent_dummy = TRUE) |> 
+  as.matrix()
+
+out = clogit(status ~ (pfas_lg2_PFHpA + x10_112187282 + x16_53772541)^2, data = data_hcc)
+summary(out)
+
+
+BHRM.interaction(
+  X = X, 
+  Y = Y, 
+  U = U,
+  selection = TRUE, 
+  family = "binomial"
+)
 ```
 
