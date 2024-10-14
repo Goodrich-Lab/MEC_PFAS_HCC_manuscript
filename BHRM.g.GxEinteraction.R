@@ -116,8 +116,8 @@ BHRM.logistic.interaction.model <-
 #                              n.adapt=5000, n.burnin=5000, n.sample=5000) {
 # NEW-JG:
 
-profiles = matrix(c(rep(-0.5, P), rep(0.5, P)), nrow=2, byrow=TRUE)
 
+# NOTE: THIS MODIFIED VERSION ONLY WORKS WITH A SINGLE ENVIRONMENTAL VARIABLE
 BHRM.interaction <- function(G = NULL, 
                              E = NULL, 
                              SNPS=NULL,
@@ -129,20 +129,20 @@ BHRM.interaction <- function(G = NULL,
                              selection=FALSE,
                              n.adapt=5000, n.burnin=5000, n.sample=5000) {
   X = cbind(E, G)
-  
   N <- length(Y)
   P <- ncol(X)
   Q <- ncol(U)
   sel <- ifelse(selection, 1, 0) # used in JAGs as a ifelse statement for selection of main effects; interaction effects always have selection
   
   # fmla <- as.formula(paste("~ -1 + (", paste(names(as.data.frame(X)), collapse="+"), ")^2", sep=""))
-  fmla <- as.formula(paste("~ -1 + ", 
-                           paste(colnames(X), collapse="+"), 
-                           " + ", 
+  fmla <- as.formula(paste("~ -1 + ",
+                           paste(colnames(X), collapse="+"),
+                           " + ",
                            colnames(E), ":(",
-                           paste(colnames(G), collapse="+"), 
-                           ") ", 
-                           sep=""))
+                           paste(colnames(G), collapse="+"),
+                           ") ",
+                           sep="")
+                     )
   X.full <- model.matrix(fmla, data=as.data.frame(X))
   X.int <- X.full[,(P+1):ncol(X.full)]
   P.int <- ncol(X.int)
@@ -152,7 +152,13 @@ BHRM.interaction <- function(G = NULL,
   index.int <- index.int[,index.int[1,] == 1]
   
   
-  fmla.int <- as.formula(paste("~ -1 + (", paste(names(as.data.frame(profiles)), collapse="+"), ")^2", sep=""))
+  fmla.int <- as.formula(paste("~ -1 + ",
+                               paste(names(as.data.frame(profiles)), collapse="+"),
+                               " + ",
+                               names(as.data.frame(profiles))[1], ":(",
+                               paste(names(as.data.frame(profiles))[-1], collapse="+"),
+                               ")", sep="")
+                         )
   profiles.full <- as.data.frame(model.matrix(fmla.int, data=as.data.frame(profiles)))
   profiles.int <- profiles.full[,(P+1):ncol(profiles.full)]
   

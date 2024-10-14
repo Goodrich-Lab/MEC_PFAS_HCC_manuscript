@@ -22,11 +22,11 @@ knit: (function(inputFile, encoding) {
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
 
-
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
+source(here::here("BHRM.g.interaction.R"))
 ```
 
 ## Checking SNPs
@@ -553,49 +553,89 @@ fm_ee |>
 # 3. BHRM-g interaction model
 ```{r}
 # BHRM-g interaction model
-
-# X: Exposure
-E = data_hcc |> 
+data_hcc_not_missing_genetics <- data_hcc |> 
+  tidylog::filter(!is.na(gwas))
+# X: Exposure ----
+E = data_hcc_not_missing_genetics |> 
   tidylog::select(pfas_lg2_PFHpA) |>
   mutate(pfas_lg2_PFHpA = scale(pfas_lg2_PFHpA) |> as.numeric()) |>
   as.matrix()
 
-G = data_hcc |> 
+G = data_hcc_not_missing_genetics |> 
   tidylog::select(all_of(snp_name_df$name)) |>
   mutate(across(everything(), ~scale(.) |> as.numeric())) |> 
   as.matrix()
 
-# Y: Outcome 
-Y = data_hcc |> 
-  tidylog::select(status) |> 
-  as.matrix()
+# Y: Outcome ----
+Y = data_hcc_not_missing_genetics$status
+# data_hcc_not_missing_genetics |> 
+# tidylog::select(status) |> 
+# as.matrix()
 
-# U: Confounders 
+# U: Confounders ----
 # note- since this is logistic (not clogit), we need to include matching factors
-U = data_hcc |> 
+U = data_hcc_not_missing_genetics |> 
   tidylog::select(alcohol_intake,
-                         smokestatus, 
-                         q1_dp_amds_totscore,
-                         q1_fdgp7, 
+                  smokestatus, 
+                  q1_dp_amds_totscore,
+                  q1_fdgp7, 
                   studyarea, sex, eth, q1_byr) |> 
+  mutate(smokestatus = replace_na(as.character(smokestatus), "missing"))  |> 
   fastDummies::dummy_cols(select_columns = c("smokestatus", 
                                              "studyarea", 
                                              "sex", 
                                              "eth"),
                           remove_selected_columns = TRUE, 
                           remove_most_frequent_dummy = TRUE) |> 
-  as.matrix()
-
-out = clogit(status ~ (pfas_lg2_PFHpA + x10_112187282 + x16_53772541)^2, data = data_hcc)
-summary(out)
+  as.matrix() 
 
 
-BHRM.interaction(
-  X = X, 
-  Y = Y, 
-  U = U,
-  selection = TRUE, 
-  family = "binomial"
-)
+# Profiles  ----
+X = cbind(E, G)
+N <- length(Y)
+P <- ncol(X)
+ 
+
+
+w=0.9
+selection = FALSE
+family = "binomial"
+n.adapt=5000
+n.burnin=5000
+n.sample=5000
+
+
+# only examine PFAS*Gene two way interactions
+n_total_effects = P + P-1
+
+
+# Main Effect PFAS (keeping genes at 0)
+profiles_pfas_main_eff = rbind(c(-.5, rep(0, n_total_effects-1)), c(0.5, rep(0, n_total_effects-1)))
+
+# Main Effect Genes (keeping PFAS at 0)
+profiles_gene_main_eff = rbind(c(0, rep(-.5, n_total_effects)), c(0, rep(0.5, n_total_effects)))
+
+# Interaction
+profile_g_e_interactions = rbind(rep(-.5, n_total_effects), rep(0.5, n_total_effects))
+
+profile_g_e_interactions = 
+
+# BHRM.interaction(
+#   E = E,
+#   G = G,
+#   Y = Y, 
+#   U = U,
+#   selection = TRUE, 
+#   family = "binomial"
+# )
+
+# Use regular expressions to split the effect names into components
+library(dplyr)
+library(stringr)
+
+
+names(BHRM.results)
+
 ```
+
 

@@ -118,3 +118,5 @@ diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirnam
 
 diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
             .funs = list(scld = ~scale(.)))
+
+rm(data_temp, data_temp_control)
