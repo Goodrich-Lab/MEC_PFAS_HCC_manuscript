@@ -21,6 +21,7 @@ data <- readRDS(fs::path(
 #   dir_cleaned_data,"hhear_complete_data_v1.RDS" ))
 # Adding 
 
+
 snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
                                        "0_data_processing",
                                        "0_raw_data",
@@ -118,3 +119,5 @@ diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirnam
 
 diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
             .funs = list(scld = ~scale(.)))
+
+rm(data_temp, data_temp_control)

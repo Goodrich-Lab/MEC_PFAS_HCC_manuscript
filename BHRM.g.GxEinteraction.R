@@ -1,6 +1,6 @@
 # Script to perform Bayesian Regression with g prior and selection for mixtures
-# author: "Jingxuan He and David Conti"
-# last updated: 11/29/22
+# author: Jingxuan He, David Conti, Jesse Goodrich
+# last updated: 10/16/2024
 
 library(R2jags)
 
@@ -49,10 +49,18 @@ BHRM.gaussian.interaction.model <-
   }
   pi.int ~ dbeta(1,P.int)
   
-  # g-estimation
-  eta.low <- inprod(beta[1:P], profiles[1,1:P]) + inprod(beta.int[1:P.int], profiles.int[1,1:P.int])
-  eta.high <- inprod(beta[1:P], profiles[2,1:P]) + inprod(beta.int[1:P.int], profiles.int[2,1:P.int])
-  psi <-eta.high-eta.low
+ # g-estimation
+  eta_pfas.low <- inprod(beta[1:P], profiles_pfas[1,1:P]) + inprod(beta.int[1:P.int], profiles_pfas.int[1,1:P.int])
+  eta_gene.low <- inprod(beta[1:P], profiles_gene[1,1:P]) + inprod(beta.int[1:P.int], profiles_gene.int[1,1:P.int])
+  eta_gxe.low <- inprod(beta[1:P], profiles_gxe[1,1:P]) + inprod(beta.int[1:P.int], profiles_gxe.int[1,1:P.int])
+  
+  eta_pfas.high <- inprod(beta[1:P], profiles_pfas[2,1:P]) + inprod(beta.int[1:P.int], profiles_pfas.int[2,1:P.int])
+  eta_gene.high <- inprod(beta[1:P], profiles_gene[2,1:P]) + inprod(beta.int[1:P.int], profiles_gene.int[2,1:P.int])
+  eta_gxe.high <- inprod(beta[1:P], profiles_gxe[2,1:P]) + inprod(beta.int[1:P.int], profiles_gxe.int[2,1:P.int])
+  
+  psi_pfas <- eta_pfas.high-eta_pfas.low
+  psi_gene <- eta_gene.high-eta_gene.low
+  psi_gxe <- eta_gxe.high-eta_gxe.low
   
 }"
 
@@ -98,9 +106,17 @@ BHRM.logistic.interaction.model <-
   pi.int ~ dbeta(1,P.int)
   
   # g-estimation
-  eta.low <- inprod(beta[1:P], profiles[1,1:P]) + inprod(beta.int[1:P.int], profiles.int[1,1:P.int])
-  eta.high <- inprod(beta[1:P], profiles[2,1:P]) + inprod(beta.int[1:P.int], profiles.int[2,1:P.int])
-  psi <- eta.high-eta.low
+  eta_pfas.low <- inprod(beta[1:P], profiles_pfas[1,1:P]) + inprod(beta.int[1:P.int], profiles_pfas.int[1,1:P.int])
+  eta_gene.low <- inprod(beta[1:P], profiles_gene[1,1:P]) + inprod(beta.int[1:P.int], profiles_gene.int[1,1:P.int])
+  eta_gxe.low <- inprod(beta[1:P], profiles_gxe[1,1:P]) + inprod(beta.int[1:P.int], profiles_gxe.int[1,1:P.int])
+  
+  eta_pfas.high <- inprod(beta[1:P], profiles_pfas[2,1:P]) + inprod(beta.int[1:P.int], profiles_pfas.int[2,1:P.int])
+  eta_gene.high <- inprod(beta[1:P], profiles_gene[2,1:P]) + inprod(beta.int[1:P.int], profiles_gene.int[2,1:P.int])
+  eta_gxe.high <- inprod(beta[1:P], profiles_gxe[2,1:P]) + inprod(beta.int[1:P.int], profiles_gxe.int[2,1:P.int])
+  
+  psi_pfas <- eta_pfas.high-eta_pfas.low
+  psi_gene <- eta_gene.high-eta_gene.low
+  psi_gxe <- eta_gxe.high-eta_gxe.low
   
 }"
 
@@ -116,49 +132,68 @@ BHRM.logistic.interaction.model <-
 #                              n.adapt=5000, n.burnin=5000, n.sample=5000) {
 # NEW-JG:
 
-profiles = matrix(c(rep(-0.5, P), rep(0.5, P)), nrow=2, byrow=TRUE)
+# family should be one of c("gaussian", "binomial")
 
-BHRM.interaction <- function(G = NULL, 
-                             E = NULL, 
-                             SNPS=NULL,
+# NOTE: THIS MODIFIED VERSION ONLY WORKS WITH A SINGLE ENVIRONMENTAL VARIABLE
+BHRM.interaction <- function(G = NULL,
+                             E = NULL,
                              Y=NULL,
                              U=NULL,
-                             profiles=NULL,
-                             family = "gaussian",
+                             profiles_pfas = NULL,
+                             profiles_gene = NULL,
+                             profiles_gxe = NULL,
+                             family = NULL,
                              w=0.9,
                              selection=FALSE,
-                             n.adapt=5000, n.burnin=5000, n.sample=5000) {
-  X = cbind(E, G)
+                             n.adapt=5000, 
+                             n.burnin=5000, 
+                             n.sample=5000){
   
+  
+  X = cbind(E, G)
   N <- length(Y)
   P <- ncol(X)
   Q <- ncol(U)
   sel <- ifelse(selection, 1, 0) # used in JAGs as a ifelse statement for selection of main effects; interaction effects always have selection
   
   # fmla <- as.formula(paste("~ -1 + (", paste(names(as.data.frame(X)), collapse="+"), ")^2", sep=""))
-  fmla <- as.formula(paste("~ -1 + ", 
-                           paste(colnames(X), collapse="+"), 
-                           " + ", 
+  fmla <- as.formula(paste("~ -1 + ",
+                           paste(colnames(X), collapse="+"),
+                           " + ",
                            colnames(E), ":(",
-                           paste(colnames(G), collapse="+"), 
-                           ") ", 
-                           sep=""))
+                           paste(colnames(G), collapse="+"),
+                           ") ",
+                           sep="")
+  )
   X.full <- model.matrix(fmla, data=as.data.frame(X))
   X.int <- X.full[,(P+1):ncol(X.full)]
   P.int <- ncol(X.int)
+  
   # All interactions
   index.int <- combn(1:P, m=2)
   # Select only E*G interactions
   index.int <- index.int[,index.int[1,] == 1]
   
+  ## profiles
+  fmla.int <- as.formula(paste("~ -1 + ",
+                               paste(names(as.data.frame(profiles_pfas)), collapse="+"),
+                               " + ",
+                               names(as.data.frame(profiles_pfas))[1], ":(",
+                               paste(names(as.data.frame(profiles_pfas))[-1], collapse="+"),
+                               ")", sep="")
+  )
+  profiles_pfas.full <- as.data.frame(model.matrix(fmla.int, data=as.data.frame(profiles_pfas)))
+  profiles_gene.full <- as.data.frame(model.matrix(fmla.int, data=as.data.frame(profiles_gene)))
+  profiles_gxe.full <- as.data.frame(model.matrix(fmla.int, data=as.data.frame(profiles_gxe)))
   
-  fmla.int <- as.formula(paste("~ -1 + (", paste(names(as.data.frame(profiles)), collapse="+"), ")^2", sep=""))
-  profiles.full <- as.data.frame(model.matrix(fmla.int, data=as.data.frame(profiles)))
-  profiles.int <- profiles.full[,(P+1):ncol(profiles.full)]
+  profiles_pfas.int <- profiles_pfas.full[,(P+1):ncol(profiles_pfas.full)]
+  profiles_gene.int <- profiles_gene.full[,(P+1):ncol(profiles_gene.full)]
+  profiles_gxe.int <- profiles_gxe.full[,(P+1):ncol(profiles_gxe.full)]
+  ## End Profiles
   
   univariate.results <- t(sapply(1:P, FUN=function(p) {  
     x <- as.matrix(X[,p])
-    reg <- glm(Y~x +U, family=family)    # perform regression
+    reg <- glm(Y ~ x + U, family=family)    # perform regression
     c.reg <- summary(reg)$coef["x",]    # select the coefficients for the exposure
   }, simplify=T))
   
@@ -169,20 +204,52 @@ BHRM.interaction <- function(G = NULL,
   
   # run jags
   jags.model.text <- ifelse(family=="gaussian", BHRM.gaussian.interaction.model, BHRM.logistic.interaction.model)
-  jdata <- list(N=N, Y=Y, X=X, X.int=X.int, U=U, P=P, P.int=P.int, sel=sel, index.int=index.int, Q=Q, 
-                profiles=profiles, profiles.int=profiles.int, XtX=XtX, w=w, prop.mu.beta=prop.mu.beta, prop.sd.beta=prop.sd.beta)
-  var.s <- c("beta", "beta.int", "gamma", "gamma.int", "eta.low", "eta.high",  "psi")
-  model.fit <- jags.model(file=textConnection(jags.model.text), data=jdata, n.chains=1, n.adapt=n.adapt, quiet=T)
-  update(model.fit, n.iter=n.burnin, progress.bar="none")
-  model.fit <- coda.samples(model=model.fit, variable.names=var.s, n.iter=n.sample, thin=1, progress.bar="none")
+  jdata <- list(N=N, Y=Y, X=X, X.int=X.int, U=U, P=P, P.int=P.int,
+                sel=sel, index.int=index.int, Q=Q, 
+                profiles_pfas= profiles_pfas, profiles_pfas.int=profiles_pfas.int,
+                profiles_gene= profiles_gene, profiles_gene.int=profiles_gene.int,
+                profiles_gxe = profiles_gxe,  profiles_gxe.int =profiles_gxe.int,
+                XtX=XtX, w=w, prop.mu.beta=prop.mu.beta, prop.sd.beta=prop.sd.beta)
+  var.s <- c("beta", "beta.int", "gamma", "gamma.int", 
+             "eta_pfas.low", "eta_pfas.high", "psi_pfas", 
+             "eta_gene.low", "eta_gene.high", "psi_gene", 
+             "eta_gxe.low", "eta_gxe.high", "psi_gxe")
+  model.fit <- jags.model(file=textConnection(jags.model.text), data=jdata, n.chains=3, n.adapt=n.adapt, quiet=T)
+  update(model.fit, n.iter=n.burnin) # , progress.bar="none"
+  model.fit <- coda.samples(model=model.fit, variable.names=var.s, n.iter=n.sample, thin=1) #, progress.bar="none"
   
   # summarize results
   r <- summary(model.fit)
   BHRM.results <- data.frame(round(r$statistics[,1:2],3), round(r$quantiles[,c(1,5)],3))
   wald = abs(BHRM.results[,"Mean"]/BHRM.results[,"SD"])
   BHRM.results$p.val = round(2*(1-pnorm(wald,0,1)), 3)
-  return(BHRM.results)
   
+  BHRM.results_fin <- BHRM.results |> 
+    rownames_to_column("rowname")
+
+  
+  BHRM.results_fin <- BHRM.results_fin |> 
+    mutate(
+      effect_type = case_when(
+        str_detect(rowname, "psi_") ~ "mixture", 
+        str_detect(rowname, "beta.int") ~ "beta interaction", 
+        str_detect(rowname, "beta") ~ "beta main effect",
+        str_detect(rowname, "gamma.int") ~ "gamma interaction", 
+        str_detect(rowname, "gamma") ~ "gamma main effect",
+        str_detect(rowname, "eta_") ~ "eta", 
+        TRUE ~ "error"))
+  
+
+  
+  BHRM.results_fin$var_name  <- c(colnames(X.full), 
+                                  "eta_gene.high","eta_gene.low","eta_gxe.high",
+                                  "eta_gxe.low","eta_pfas.high","eta_pfas.low",
+                                  colnames(X.full), 
+                                  "psi_gene", "psi_gxe", "psi_pfas")
+  
+
+  
+  return(BHRM.results_fin)
 }
 
 

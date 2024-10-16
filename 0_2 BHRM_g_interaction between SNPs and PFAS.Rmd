@@ -22,30 +22,53 @@ knit: (function(inputFile, encoding) {
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
 
-
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
 source(fs::path(here::here("!load_data.R")))
+source(here::here("BHRM.g.GxEinteraction.R"))
 ```
 
 ## Checking SNPs
 **x14_94378610, x17_66214462, x19_19268740 were excluded from analysis**
 ```{r correlation of SNPs}
-pfc_chem_summaries <-  data_hcc %>%
+snp_summaries_hcc <-  data_hcc %>%
   dplyr::select(x1_220796686:x22_43928850) %>%
   pivot_longer(cols = x1_220796686:x22_43928850) %>% 
   group_by(name) %>% 
-  summarise(pctna   = mean(value == 0, na.rm = TRUE), 
+  summarise(pct_0   = mean(value == 0, na.rm = TRUE),
+            pct_base_allele   = mean(value < 0.05, na.rm = TRUE),
             variance = var(value, na.rm = TRUE),
-            mean    = mean(value, na.rm = TRUE))
+            mean    = mean(value, na.rm = TRUE), 
+            median  = median(value, na.rm = TRUE)
+  )
 
-snp_name_df <-  tidylog::left_join(pfc_chem_summaries, 
-                                   snp_info, by = c("name" = "snp_name")) |>
-  filter(pctna < 0.75) %>% dplyr::select(name)
+snp_name_df <-  tidylog::left_join(snp_info, snp_summaries_hcc, 
+                                   by = c("snp_name" = "name")) |>
+  rename(name = snp_name) |> 
+  filter(pct_0 < 0.75) %>% #dplyr::select(name)
+  dplyr::select(name, gene, risk_allele_frequency_mec, everything())
+
 
 snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
 
+# Look at overall snp summaries to identify risk vs. control alleles ----
+snp_summaries_cont <- data %>%
+  tidylog::filter(status == "Control") %>%
+  dplyr::select(x1_220796686:x22_43928850) %>%
+  pivot_longer(cols = x1_220796686:x22_43928850) %>% 
+  group_by(name) %>% 
+  summarise(pct_0           = mean(value == 0, na.rm = TRUE),
+            pct_base_allele = mean(value < 0.05, na.rm = TRUE),
+            variance        = var(value, na.rm = TRUE),
+            mean            = mean(value, na.rm = TRUE), 
+            median          = median(value, na.rm = TRUE)
+  )
+
+snp_summaries_cont <-  tidylog::left_join(snp_summaries_cont, 
+                                          snp_info, by = c("name" = "snp_name")) |>
+  filter(pct_0 < 0.75) %>% #dplyr::select(name)
+  dplyr::select(name, gene, risk_allele_frequency_mec, everything())
 ```
 
 ## summary of SNPs
@@ -60,7 +83,7 @@ summarytools::view(
                           headings = FALSE), method = "render")
 ```
 
-## summary of SNPs after normalized
+## summary of SNPs after normalization
 ```{r summary of SNPs after normalized}
 data_analysis_hcc_snp <- data_hcc %>%
   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
@@ -140,7 +163,7 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_latino_snp%>%
                                            valid.col = FALSE, 
                                            headings = FALSE), method = "render")
 
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp%>%
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
                                              dplyr::select(contains("scld"),
                                                            -contains("pfas")),
                                            style = 'grid',
@@ -551,51 +574,270 @@ fm_ee |>
 
 
 # 3. BHRM-g interaction model
-```{r}
+```{r all genes}
 # BHRM-g interaction model
-
-# X: Exposure
-E = data_hcc |> 
+data_hcc_not_missing_genetics <- data_hcc |> 
+  tidylog::filter(!is.na(gwas))
+# X: Exposure ----
+E = data_hcc_not_missing_genetics |> 
   tidylog::select(pfas_lg2_PFHpA) |>
   mutate(pfas_lg2_PFHpA = scale(pfas_lg2_PFHpA) |> as.numeric()) |>
   as.matrix()
 
-G = data_hcc |> 
+G = data_hcc_not_missing_genetics |> 
   tidylog::select(all_of(snp_name_df$name)) |>
   mutate(across(everything(), ~scale(.) |> as.numeric())) |> 
   as.matrix()
 
-# Y: Outcome 
-Y = data_hcc |> 
-  tidylog::select(status) |> 
-  as.matrix()
+# Y: Outcome ----
+Y = data_hcc_not_missing_genetics$status
+# data_hcc_not_missing_genetics |> 
+# tidylog::select(status) |> 
+# as.matrix()
 
-# U: Confounders 
+# U: Confounders ----
 # note- since this is logistic (not clogit), we need to include matching factors
-U = data_hcc |> 
-  tidylog::select(alcohol_intake,
-                         smokestatus, 
-                         q1_dp_amds_totscore,
-                         q1_fdgp7, 
+U = data_hcc_not_missing_genetics |> 
+  tidylog::select(alcohol_intake_cat,
+                  smokestatus, 
+                  q1_dp_amds_totscore,
+                  diabetes,
+                  q1_fdgp7, 
                   studyarea, sex, eth, q1_byr) |> 
-  fastDummies::dummy_cols(select_columns = c("smokestatus", 
+  mutate(smokestatus = replace_na(as.character(smokestatus), "missing"))  |> 
+  fastDummies::dummy_cols(select_columns = c("alcohol_intake_cat", 
+                                             "smokestatus", 
                                              "studyarea", 
+                                             "diabetes",
                                              "sex", 
                                              "eth"),
                           remove_selected_columns = TRUE, 
                           remove_most_frequent_dummy = TRUE) |> 
-  as.matrix()
-
-out = clogit(status ~ (pfas_lg2_PFHpA + x10_112187282 + x16_53772541)^2, data = data_hcc)
-summary(out)
+  as.matrix() 
 
 
-BHRM.interaction(
-  X = X, 
-  Y = Y, 
-  U = U,
-  selection = TRUE, 
-  family = "binomial"
-)
+# Profiles  ----
+X = cbind(E, G)
+N <- length(Y)
+P <- ncol(X)
+
+# only examine PFAS*Gene two way interactions
+# colnames of genes 
+snp_name_df$increase_is_protective_or_harmful
+
+n_total_effects = P + P-1
+n_genes = P-1
+
+e_low     = -0.5
+e_control =  0.0
+e_high    =  0.5
+
+g_low = ifelse(snp_name_df$increase_is_protective_or_harmful == "Harmful", -0.5, 0.5)
+g_control  =  rep(0, n_genes)
+g_high     =  ifelse(snp_name_df$increase_is_protective_or_harmful == "Harmful", 0.5, -0.5)
+
+median(G[,1])
+hist(G[,1])
+sd(G[,1])
+
+# Main Effect PFAS (keeping genes at "low risk")-
+# NOTE- this is not needed, because this just returns the 
+# main effect of the PFAS
+profiles_pfas = rbind(
+  c(e_low,  g_low), 
+  c(e_high, g_low)) 
+
+
+# Main Effect Genes (keeping PFAS at 0)
+profiles_gene = rbind(
+  c(e_control, g_low), 
+  c(e_control, g_high)) 
+
+# Interaction
+profiles_gxe = rbind(
+  c(e_low,  g_low), 
+  c(e_high, g_high)) 
+
+
+res_out_w_90 <- BHRM.interaction(
+  G = G,
+  E = E,
+  Y=Y,
+  U=U,
+  profiles_pfas = profiles_pfas,
+  profiles_gene = profiles_gene,
+  profiles_gxe = profiles_gxe,
+  family = "binomial",
+  w=0.90,
+  selection=TRUE,
+  n.adapt =5000, 
+  n.burnin=5000, 
+  n.sample=5000)
+
+res_out_w_95 <- BHRM.interaction(
+  G = G,
+  E = E,
+  Y=Y,
+  U=U,
+  profiles_pfas = profiles_pfas,
+  profiles_gene = profiles_gene,
+  profiles_gxe = profiles_gxe,
+  family = "binomial",
+  w=0.95,
+  selection=TRUE,
+  n.adapt =5000, 
+  n.burnin=5000, 
+  n.sample=5000)
+
+res_out_w_99 <- BHRM.interaction(
+  G = G,
+  E = E,
+  Y=Y,
+  U=U,
+  profiles_pfas = profiles_pfas,
+  profiles_gene = profiles_gene,
+  profiles_gxe = profiles_gxe,
+  family = "binomial",
+  w=0.99,
+  selection=TRUE,
+  n.adapt =5000, 
+  n.burnin=5000, 
+  n.sample=5000)
+
 ```
 
+
+
+```{r pnpla3 only}
+# BHRM-g interaction model
+data_hcc_not_missing_genetics <- data_hcc |> 
+  tidylog::filter(!is.na(gwas))
+# X: Exposure ----
+E = data_hcc_not_missing_genetics |> 
+  tidylog::select(pfas_lg2_PFHpA) |>
+  mutate(pfas_lg2_PFHpA = scale(pfas_lg2_PFHpA) |> as.numeric()) |>
+  as.matrix()
+
+G = data_hcc_not_missing_genetics |> 
+  tidylog::select(x22_43928850, x10_112187282) |>
+  mutate(across(everything(), ~scale(.) |> as.numeric())) |> 
+  as.matrix()
+
+# Y: Outcome ----
+Y = data_hcc_not_missing_genetics$status
+# data_hcc_not_missing_genetics |> 
+# tidylog::select(status) |> 
+# as.matrix()
+
+# U: Confounders ----
+# note- since this is logistic (not clogit), we need to include matching factors
+U = data_hcc_not_missing_genetics |> 
+  tidylog::select(#alcohol_intake,
+    #smokestatus, 
+    q1_dp_amds_totscore,
+    #q1_fdgp7, 
+    studyarea, sex, eth, q1_byr) |> 
+  # mutate(smokestatus = replace_na(as.character(smokestatus), "missing"))  |> 
+  fastDummies::dummy_cols(select_columns = c(#"smokestatus", 
+    "studyarea", 
+    "sex", 
+    "eth"),
+    remove_selected_columns = TRUE, 
+    remove_most_frequent_dummy = TRUE) |> 
+  as.matrix() 
+
+
+# Profiles  ----
+X = cbind(E, G)
+N <- length(Y)
+P <- ncol(X)
+
+
+# only examine PFAS*Gene two way interactions
+# colnames of genes 
+colnames(G)
+
+n_total_effects = P + P-1
+n_genes = P-1
+
+e_low     = -0.5
+e_control =  0.0
+e_high    =  0.5
+
+g_low = c(-0.5, -0.5)
+g_control  =  c(0, 0)
+g_high     =  c(0.5, 0.5)
+
+# Main Effect PFAS (keeping genes at "low risk")-
+# NOTE- this is not needed, because this just returns the 
+# main effect of the PFAS
+profiles_pfas = rbind(
+  c(e_low,  g_low), 
+  c(e_high, g_low)) 
+
+
+# Main Effect Genes (keeping PFAS at 0)
+profiles_gene = rbind(
+  c(e_control, g_low), 
+  c(e_control, g_high)) 
+
+# Interaction
+profiles_gxe = rbind(
+  c(e_low,  g_low), 
+  c(e_high, g_high)) 
+
+# Compare results between clogit, logistic, and bhrm-g --------
+# Test logistic
+(reg <- glm(status ~ -1 + pfas_lg2_PFHpA + 
+              x22_43928850 +
+              pfas_lg2_PFHpA:x22_43928850 +
+              q1_dp_amds_totscore + 
+              # alcohol_intake + 
+              # smokestatus + 
+              q1_fdgp7 +
+              q1_age_cohent + studyarea + sex + eth, 
+            data = data_hcc_not_missing_genetics, 
+            family="binomial") |>   # perform regression
+    tidy())
+
+View(data.frame(colnames(data_hcc_not_missing_genetics)))
+
+# clogit
+(clogit_res <- clogit(status ~ pfas_lg2_PFHpA + 
+                        x22_43928850 +
+                        pfas_lg2_PFHpA:x22_43928850 +
+                        # alcohol_intake + 
+                        # smokestatus + 
+                        q1_fdgp7 +
+                        q1_dp_amds_totscore +
+                        q1_byr + 
+                        strata(setnum),  
+                      data = data_hcc_not_missing_genetics)  |> 
+    tidy())
+# compare 
+comparison <- tidylog::full_join(reg, clogit_res, 
+                                 by = "term", 
+                                 suffix = c("_log", 
+                                            "_clogit")) |> 
+  mutate(estimate_pct_diff = (estimate_log-estimate_clogit)/estimate_clogit) |>
+  select(term, contains("estimate"), everything()) 
+
+
+# Run BHRM-g analysis
+res_out_w_pnpla3w <- BHRM.interaction(
+  G = G,
+  E = E,
+  Y=Y,
+  U=U,
+  profiles_pfas = profiles_pfas,
+  profiles_gene = profiles_gene,
+  profiles_gxe = profiles_gxe,
+  family = "binomial",
+  w=0.99,
+  selection=FALSE,
+  n.adapt =5000,
+  n.burnin=5000,
+  n.sample=5000)
+
+
+```

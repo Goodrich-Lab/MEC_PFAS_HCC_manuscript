@@ -126,12 +126,19 @@ BHRM.interaction <- function(G = NULL,
                              w=0.9,
                              selection=FALSE,
                              n.adapt=5000, n.burnin=5000, n.sample=5000) {
+  
   X = cbind(E, G)
-   
   N <- length(Y)
   P <- ncol(X)
   Q <- ncol(U)
   sel <- ifelse(selection, 1, 0) # used in JAGs as a ifelse statement for selection of main effects; interaction effects always have selection
+  
+  
+  # Set profiles (new)
+  if(is.null(profiles)){
+    profiles = rbind(rep(-.5, P), rep(0.5, P))
+    colnames(profiles) = colnames(X)
+  }
   
   fmla <- as.formula(paste("~ -1 + (", paste(names(as.data.frame(X)), collapse="+"), ")^2", sep=""))
   X.full <- model.matrix(fmla, data=as.data.frame(X))
@@ -168,7 +175,27 @@ BHRM.interaction <- function(G = NULL,
   BHRM.results <- data.frame(round(r$statistics[,1:2],3), round(r$quantiles[,c(1,5)],3))
   wald = abs(BHRM.results[,"Mean"]/BHRM.results[,"SD"])
   BHRM.results$p.val = round(2*(1-pnorm(wald,0,1)), 3)
-  return(BHRM.results)
+  colnames(BHRM.results) = c("Mean", "SD", "X2_5",  "X97_5", "p_val")
+  
+  # Modify rownames to link with effect names
+  BHRM.results2 <- BHRM.results |> 
+    rownames_to_column("rowname") |>
+    mutate(effect = str_extract(effect, "^[a-zA-Z]+"),  # Extract the base like "beta" or "gamma"
+           interaction = ifelse(str_detect(rowname, "int"), "int", "main effect"),  # Determine if it's main effect or interaction
+           number = as.numeric(str_extract(rowname, "\\d+")))  # Extract the number)
+  
+
+  # Create a data frame by extracting the components
+  effect_link = data.frame(
+    number = c(1:P, 1:ncol(X.int)),
+    interaction = c(rep("main effect", P), rep("int", ncol(X.int))),
+    names = c(colnames(X), colnames(X.int)))
+  
+  # Show the resulting data frame
+  resout <- tidylog::full_join(effect_link, BHRM.results2)
+  
+  
+  return(resout)
   
 }
 
