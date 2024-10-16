@@ -1,8 +1,8 @@
 # Set up data for analysis
 # library(tidylog)
 
-# Read Data ---------------------------------------------------------------
 
+# Read Data ---------------------------------------------------------------
 data <- readRDS(fs::path(
   dir_cleaned_data,
   "hhear_complete_data_v1.RDS")) 
@@ -34,7 +34,6 @@ snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% 
 untargeted_met_data <- readRDS(fs::path(dir_cleaned_data, "Untargeted_feature_metadata.RDS"))
 
 # variables--------------
-
 pfas_name <- colnames(data %>% 
                         dplyr::select(contains("pfas")) %>% 
                         dplyr::select(contains("lg2")) %>% 
@@ -49,6 +48,39 @@ data <- data %>%
             .funs = ~str_remove(., "_lg2"))
 
 pfas_name_raw <- colnames(data%>% dplyr::select(contains("raw")))
+
+# Impute missing smoking status ----------------------------------------
+
+# Select only the variables involved
+impute_data <- data[, c("smokestatus", "casetype", "sex",  "q1_byr", "q1_elih", "bmi", "eth")] 
+
+impute_data <- as.data.frame(impute_data) 
+
+for (i in 1:ncol(impute_data)) {
+  haven::zap_labels(impute_data[,i])
+}
+
+# Convert categorical variables to factors
+impute_data$smokestatus <- as.factor(as.character(impute_data$smokestatus))
+impute_data$casetype    <- as.factor(as.character(impute_data$casetype))
+impute_data$sex         <- as.factor(as.character(impute_data$sex))
+impute_data$q1_byr      <- as.numeric(impute_data$q1_byr)
+impute_data$bmi         <- as.numeric(impute_data$bmi)
+
+# Run imputation
+set.seed(1234)
+imputed_data <- missForest::missForest(impute_data, maxiter = 10, ntree = 100)
+
+
+# Get the completed data
+completed_data <- imputed_data$ximp
+
+# Replace the original smokestatus with the imputed values
+data$smokestatus_imputed <- completed_data$smokestatus
+data$q1_elih_imputed <- completed_data$q1_elih
+data$bmi_imputed <- completed_data$bmi
+
+data <- data |> select(-c(smokestatus, q1_elih, bmi, bmi_cat))
 
 # Add PFAS quartiles, based on controls only-------
 pfas_quartile <- data %>%
@@ -101,11 +133,9 @@ data_hcc <- data_hcc %>%
 # categorical pfas name
 pfas_name_cat <- colnames(data %>% dplyr::select(contains("quartile")))
 
+
 # covariates
-# covars <- c("bmi","alcohol_intake","smokestatus","diabetes", "q1_dp_amds_e_totscore")
-covars <- c("q1_dp_amds_totscore", "q1_fdgp7", "alcohol_intake", "smokestatus")
-
-
+covars = c("smokestatus_imputed", "alcohol_intake", "q1_d_chol", "q1_elih_imputed", "q1_fdgp7")
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 
 
@@ -118,6 +148,6 @@ diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirnam
 
 
 diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
-            .funs = list(scld = ~scale(.)))
+                           .funs = list(scld = ~scale(.)))
 
 rm(data_temp, data_temp_control)

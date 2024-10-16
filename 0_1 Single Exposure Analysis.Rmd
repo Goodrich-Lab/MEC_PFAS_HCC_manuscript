@@ -1,7 +1,7 @@
 ---
 title: 'MEC analysis'
 subtitle: "Final Analysis"
-author: "Hongxu Wang"
+author: "Hongxu Wang, Jesse Goodrich"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
   html_document:
@@ -37,11 +37,11 @@ source(fs::path(here::here("!load_data.R")))
 
 ```{r analysis1}
 res_hcc <- epiomics::owas_clogit(data_hcc , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name,
-                                    conf_int = TRUE) %>%
+                                 cc_set = "setnum", 
+                                 cc_status = "status", 
+                                 covars = covars,
+                                 omics = pfas_name,
+                                 conf_int = TRUE) %>%
   mutate(odds_ratio = exp(estimate),
          exp_ci_low = exp(conf_low),
          exp_ci_high = exp(conf_high),
@@ -51,15 +51,15 @@ eth_categories <- unique(data_hcc$eth)
 
 for(race in eth_categories[1:4]) {
   res_hcc_temp <- epiomics::owas_clogit(data_hcc %>% filter(eth == race) , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name,
-                                    conf_int = TRUE) %>%
-  mutate(odds_ratio = exp(estimate),
-         exp_ci_low = exp(conf_low),
-         exp_ci_high = exp(conf_high),
-         type = race)
+                                        cc_set = "setnum", 
+                                        cc_status = "status", 
+                                        covars = covars,
+                                        omics = pfas_name,
+                                        conf_int = TRUE) %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           type = race)
   res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
 }
 
@@ -69,7 +69,7 @@ res_hcc1 <- res_hcc |>
   mutate(pfas_name = str_remove(feature_name, "pfas_lg2_"),
          sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
                            "FDR p value < 0.05",
-                          p_value < 0.05 ~ "p value < 0.05", 
+                         p_value < 0.05 ~ "p value < 0.05", 
                          p_value >= 0.05 ~ "p value ≥ 0.05"),
          sig = factor(sig, levels = c("p value ≥ 0.05", "p value < 0.05", "FDR p value < 0.05"))) %>%
   mutate(covar = sub(".*~(.*?)\\+pfas.*", "\\1", formula))%>%
@@ -86,46 +86,46 @@ res_hcc2 <- res_hcc1 %>%
                                pfas_name == "2_aminohexafluoropropan_2_ol" ~ "2-Aminohexafluoropropan-2-ol",
                                pfas_name == "Me_PFHxA" ~ "MePFHxA",
                                TRUE ~ pfas_name),
-         ) %>%
+  ) %>%
   mutate(pfas_name = fct_reorder(pfas_name, if_else(type == "Overall", estimate, NA_real_))) %>%
   mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
                           type == "Japanese American" ~ "Japanese American \n(n = 182)",
                           type == "Latino"~ "Latino \n(n = 160)",
                           type == "White" ~ "White \n(n = 46)",
                           type == "African American" ~ "African American \n(n = 52)")
-         )
-  # mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
-  #                         type == "Japanese American" ~ "Japanese American \n(n = 182)", 
-  #                       type == "Latino"~ "Latino \n(n = 160)",
-  #                       type == "Others" ~ "Others \n(n = 132)")
-  #        )
+  )
+# mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
+#                         type == "Japanese American" ~ "Japanese American \n(n = 182)", 
+#                       type == "Latino"~ "Latino \n(n = 160)",
+#                       type == "Others" ~ "Others \n(n = 132)")
+#        )
 # 
 
 (pfhpa_hcc_main <- res_hcc2  %>%
-  filter(!type  %in% c("White \n(n = 46)", "African American \n(n = 52)"))%>%
-  ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
-  geom_point(size = 1) +
-  geom_errorbar(aes(ymin = exp(conf_low),
-                    ymax = exp(conf_high)),
-                width = 0) +
-  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
-  ylab("Odds Ratio (95% CI)") +
-  # ggtitle("Exposure Outcome Analysis for HCC Cases") +
-  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")), scales = "free_y")+
-  facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+ 
-  theme(panel.background = element_rect(fill="white"), 
-        strip.background = element_rect(fill = "white"),
-        strip.text.y = element_text(angle = 0, hjust = 0),
-        # strip.text.x = element_blank(),
-        text = element_text(size = 15),
-        # axis.title.x=element_blank(),
-        axis.line.x = element_line(color = "black"),
-        axis.title.y=element_blank(),
-        axis.line.y = element_line(color = "black"),
-        legend.position = "bottom",
-        legend.title = element_blank())+
-  coord_flip() +
-  scale_color_manual(values = c("grey","red","purple")))
+    filter(!type  %in% c("White \n(n = 46)", "African American \n(n = 52)"))%>%
+    ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
+    geom_point(size = 1) +
+    geom_errorbar(aes(ymin = exp(conf_low),
+                      ymax = exp(conf_high)),
+                  width = 0) +
+    geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+    ylab("Odds Ratio (95% CI)") +
+    # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+    # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")), scales = "free_y")+
+    facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+ 
+    theme(panel.background = element_rect(fill="white"), 
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_text(angle = 0, hjust = 0),
+          # strip.text.x = element_blank(),
+          text = element_text(size = 15),
+          # axis.title.x=element_blank(),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "bottom",
+          legend.title = element_blank())+
+    coord_flip() +
+    scale_color_manual(values = c("grey","red","purple")))
 
 # res_comb <- data.frame()
 # res_comb<- readxl::read_xlsx(fs::path(dir_result, "main_analysis_result_df.xlsx"))
@@ -143,38 +143,38 @@ res_hcc2 <- res_hcc1 %>%
 
 
 (pfhpa_hcc_main_slides <- res_hcc2  %>%
-  filter(type == "Overall \n(n = 474)")%>%
-  ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
-  geom_point(size = 1) +
-  geom_errorbar(aes(ymin = exp(conf_low),
-                    ymax = exp(conf_high)),
-                width = 0) +
-  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
-  ylab("Odds Ratio (95% CI)") +
-  # ggtitle("Exposure Outcome Analysis for HCC Cases") +
-  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+
-  theme(panel.background = element_rect(fill="white"), 
-        strip.background = element_rect(fill = "white"),
-        strip.text.y = element_text(angle = 0, hjust = 0),
-        # strip.text.x = element_blank(),
-        text = element_text(size = 15),
-        # axis.title.x=element_blank(),
-        axis.line.x = element_line(color = "black"),
-        axis.title.y=element_blank(),
-        axis.line.y = element_line(color = "black"),
-        legend.position = "none",
-        legend.title = element_blank())+
-  coord_flip() +
-  scale_color_manual(values = c("black","red","purple")))
+    filter(type == "Overall \n(n = 474)")%>%
+    ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
+    geom_point(size = 1) +
+    geom_errorbar(aes(ymin = exp(conf_low),
+                      ymax = exp(conf_high)),
+                  width = 0) +
+    geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+    ylab("Odds Ratio (95% CI)") +
+    # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+    # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+
+    theme(panel.background = element_rect(fill="white"), 
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_text(angle = 0, hjust = 0),
+          # strip.text.x = element_blank(),
+          text = element_text(size = 15),
+          # axis.title.x=element_blank(),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "none",
+          legend.title = element_blank())+
+    coord_flip() +
+    scale_color_manual(values = c("black","red","purple")))
 
 
-ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig. PFAS main effect_Overall.jpeg"),
-       width = 7,
-       height = 5,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            "main_figures",
+#                            "Fig. PFAS main effect_Overall.jpeg"),
+#        width = 7,
+#        height = 5,
+#        dpi = 300,
+#        bg = "white")
 ```
 
 
@@ -192,7 +192,8 @@ ggsave(filename = fs::path(dir_figures,
 **All races(474), White(46), African American(52), Japanese American(182), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1 cat}
-covariate_input <- "alcohol_intake + smokestatus + q1_dp_amds_totscore + q1_fdgp7"
+
+covariate_input <- paste(covars, collapse = " + ")
 
 ## create dataframe with names of dependent vars (PFAS) ----
 pfas_names <- tibble(exposure = pfas_name_cat)
@@ -285,7 +286,7 @@ all_results_df_hcc <- ind_vars %>%
   filter(grepl("pfas", term)) %>%
   bind_rows(intercept_data) %>% 
   mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
-        type = "Overall")
+         type = "Overall")
 
 all_results_df_hcc_japan <- ind_vars %>% 
   unnest(clogit_out1) %>% 
@@ -333,15 +334,15 @@ all_result_df <- all_results_df_hcc %>%
 
 ```
 
-```{r does response}
+```{r Dose response}
 data_hcc1 <- data_hcc %>% mutate_at(.vars = pfas_name_cat,
                                     .funs = ~as.numeric(.))
 res_hcc <- epiomics::owas_clogit(data_hcc1 , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name_cat,
-                                    conf_int = TRUE) %>%
+                                 cc_set = "setnum", 
+                                 cc_status = "status", 
+                                 covars = covars,
+                                 omics = pfas_name_cat,
+                                 conf_int = TRUE) %>%
   mutate(odds_ratio = exp(estimate),
          exp_ci_low = exp(conf_low),
          exp_ci_high = exp(conf_high),
@@ -351,15 +352,15 @@ eth_categories <- unique(data_hcc1$eth_new)
 
 for(race in eth_categories) {
   res_hcc_temp <- epiomics::owas_clogit(data_hcc1 %>% filter(eth_new == race) , 
-                                    cc_set = "setnum", 
-                                    cc_status = "status", 
-                                    covars = covars,
-                                    omics = pfas_name_cat,
-                                    conf_int = TRUE) %>%
-  mutate(odds_ratio = exp(estimate),
-         exp_ci_low = exp(conf_low),
-         exp_ci_high = exp(conf_high),
-         type = race)
+                                        cc_set = "setnum", 
+                                        cc_status = "status", 
+                                        covars = covars,
+                                        omics = pfas_name_cat,
+                                        conf_int = TRUE) %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           type = race)
   res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
 }
 
@@ -367,7 +368,7 @@ for(race in eth_categories) {
 res_hcc1 <- res_hcc |> 
   mutate(sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
                            "Sig.(FDR < 0.05)",
-                          p_value < 0.05 ~ "Sig.(p value < 0.05)", 
+                         p_value < 0.05 ~ "Sig.(p value < 0.05)", 
                          p_value >= 0.05 ~ "Not Sig.")) 
 
 p_trend_df <- res_hcc1 %>% select(feature_name, p_value, adjusted_pval,type) %>%
@@ -429,44 +430,44 @@ all_result_df3 <- all_result_df2 %>%
                             start = nchar(term) - 8,
                             stop = nchar(term)) %>% toTitleCase()) %>%
   mutate(
-         plot_name = paste(substr(plot_name, 1, 8), substr(plot_name, 9, 9)),
-         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
-                         p.value < 0.05 ~ "Sig.",
-                         TRUE ~ "Not Sig."),
-         label = str_c("p trend = ", format(signif(p_trend, digits = 2), scientific = FALSE))) %>%
+    plot_name = paste(substr(plot_name, 1, 8), substr(plot_name, 9, 9)),
+    sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                    p.value < 0.05 ~ "Sig.",
+                    TRUE ~ "Not Sig."),
+    label = str_c("p trend = ", format(signif(p_trend, digits = 2), scientific = FALSE))) %>%
   mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 474)",
                           type == "Japanese American" ~ "Japanese American \n(n = 182)", 
-                        type == "Latino"~ "Latino \n(n = 160)",
-                        type == "Others" ~ "Others \n(n = 132)"))
+                          type == "Latino"~ "Latino \n(n = 160)",
+                          type == "Others" ~ "Others \n(n = 132)"))
 
 # writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis.xlsx"))
 
 (pfhpa_hcc <-  ggplot(all_result_df3 %>% 
                         filter(pfas_name == "PFHpA") %>%
                         filter(type != "Others \n(n = 132)"),
-       aes(x = odds_ratio, y = fct_rev(plot_name))) +
-  geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
-                width = 0, position = position_dodge(width = 1)) +
-  geom_point(size = 1, position = position_dodge(width = 1)) + 
-  geom_vline(xintercept = 1, linetype = 2, color = "grey") +
-  # facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")))+
-   facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")))+
-  xlab("Odds Ratio (95% CI)") +
-  theme(#axis.title.x = element_blank(),
-        # axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
-        legend.position = "bottom",
-        panel.background = element_rect(fill="white"), 
-        strip.background = element_rect(fill = "white"),
-        strip.text.y = element_text(angle = 0, hjust = 0),
-        # strip.text.x = element_blank(),
-        text = element_text(size = 15),
-        axis.title.y = element_blank(),
-        axis.line.x = element_line(color = "black"),
-        axis.line.y = element_line(color = "black")) )
-   # +
-    # ylab("OR (95% CI) per\ndoubling of PFAS") + 
-    # ggtitle("Interaction of PFAS and PRS") +
-  # scale_color_manual(values = c("purple", "black","red")))
+                      aes(x = odds_ratio, y = fct_rev(plot_name))) +
+    geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
+                  width = 0, position = position_dodge(width = 1)) +
+    geom_point(size = 1, position = position_dodge(width = 1)) + 
+    geom_vline(xintercept = 1, linetype = 2, color = "grey") +
+    # facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)")))+
+    facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")))+
+    xlab("Odds Ratio (95% CI)") +
+    theme(#axis.title.x = element_blank(),
+      # axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+      legend.position = "bottom",
+      panel.background = element_rect(fill="white"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text.y = element_text(angle = 0, hjust = 0),
+      # strip.text.x = element_blank(),
+      text = element_text(size = 15),
+      axis.title.y = element_blank(),
+      axis.line.x = element_line(color = "black"),
+      axis.line.y = element_line(color = "black")) )
+# +
+# ylab("OR (95% CI) per\ndoubling of PFAS") + 
+# ggtitle("Interaction of PFAS and PRS") +
+# scale_color_manual(values = c("purple", "black","red")))
 
 
 p1 <- pfhpa_hcc + geom_text(
@@ -491,7 +492,7 @@ p1 <- pfhpa_hcc + geom_text(
 #                           axis = "lt"))
 ```
 
-## Fig1. Association of single PFAS and HCC and Does response analysis
+## Fig1. Association of single PFAS and HCC and Dose response analysis
 ```{r combine figures}
 (fig <- cowplot::plot_grid(pfhpa_hcc_main, 
                            p1,
@@ -499,59 +500,59 @@ p1 <- pfhpa_hcc + geom_text(
                            rel_heights = c(0.2, 0.12),
                            labels = c("A. PFAS and HCC",
                                       "B. Dose-response of PFHpA and HCC"),
-                          # label_x = c(-0.08,-0.18),
-                          label_x = c(-0.06, -0.14),
-                          label_size = 12,
-                          align = "v",
-                          axis = "lt"))
+                           # label_x = c(-0.08,-0.18),
+                           label_x = c(-0.06, -0.14),
+                           label_size = 12,
+                           align = "v",
+                           axis = "lt"))
 
-ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig1. Main Effect Final.jpeg"),
-       width = 10,
-       height = 8,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            "main_figures",
+#                            "Fig1. Main Effect Final.jpeg"),
+#        width = 10,
+#        height = 8,
+#        dpi = 300,
+#        bg = "white")
 ```
 
 
 ## Plasma pfas and hcc risk by race/ethnicity
 ```{r pfas and hcc by race}
 (pfhpa_hcc_by_race <- res_hcc2  %>%
-  filter(pfas_name =="PFHpA")%>%
-  ggplot(aes(x = fct_rev(factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)"))),y = exp(estimate))) +
-  geom_point(size = 1) +
-  geom_errorbar(aes(ymin = exp(conf_low),
-                    ymax = exp(conf_high)),
-                width = 0) +
-  geom_hline(yintercept = 1, linetype = 2, color = "grey") +
-  ylab("Odds Ratio (95% CI)") +
-  # ggtitle("Exposure Outcome Analysis for HCC Cases") +
-  # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+
-  theme(panel.background = element_rect(fill="white"), 
-        strip.background = element_rect(fill = "white"),
-        strip.text.y = element_text(angle = 0, hjust = 0),
-        # strip.text.x = element_blank(),
-        text = element_text(size = 15),
-        # axis.title.x=element_blank(),
-        axis.line.x = element_line(color = "black"),
-        axis.title.y=element_blank(),
-        axis.line.y = element_line(color = "black"),
-        legend.position = "none",
-        legend.title = element_blank())+
-  coord_flip() 
+   filter(pfas_name =="PFHpA")%>%
+   ggplot(aes(x = fct_rev(factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)", "Others \n(n = 132)"))),y = exp(estimate))) +
+   geom_point(size = 1) +
+   geom_errorbar(aes(ymin = exp(conf_low),
+                     ymax = exp(conf_high)),
+                 width = 0) +
+   geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+   ylab("Odds Ratio (95% CI)") +
+   # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+   # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 160)")), scales = "free_y")+
+   theme(panel.background = element_rect(fill="white"), 
+         strip.background = element_rect(fill = "white"),
+         strip.text.y = element_text(angle = 0, hjust = 0),
+         # strip.text.x = element_blank(),
+         text = element_text(size = 15),
+         # axis.title.x=element_blank(),
+         axis.line.x = element_line(color = "black"),
+         axis.title.y=element_blank(),
+         axis.line.y = element_line(color = "black"),
+         legend.position = "none",
+         legend.title = element_blank())+
+   coord_flip() 
  # +
  #  scale_color_manual(values = c("black","red"))
- )
+)
 
 
-ggsave(filename = fs::path(dir_figures,
-                           "main_figures",
-                           "Fig. PFAS main effect by race.jpeg"),
-       width = 4,
-       height = 2.5,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            "main_figures",
+#                            "Fig. PFAS main effect by race.jpeg"),
+#        width = 4,
+#        height = 2.5,
+#        dpi = 300,
+#        bg = "white")
 ```
 
 
