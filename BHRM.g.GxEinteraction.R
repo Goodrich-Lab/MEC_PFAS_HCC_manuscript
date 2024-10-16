@@ -1,6 +1,6 @@
 # Script to perform Bayesian Regression with g prior and selection for mixtures
-# author: "Jingxuan He and David Conti"
-# last updated: 11/29/22
+# author: Jingxuan He, David Conti, Jesse Goodrich
+# last updated: 10/16/2024
 
 library(R2jags)
 

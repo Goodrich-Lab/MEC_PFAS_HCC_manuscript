@@ -83,7 +83,7 @@ summarytools::view(
                           headings = FALSE), method = "render")
 ```
 
-## summary of SNPs after normalized
+## summary of SNPs after normalization
 ```{r summary of SNPs after normalized}
 data_analysis_hcc_snp <- data_hcc %>%
   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
@@ -598,14 +598,17 @@ Y = data_hcc_not_missing_genetics$status
 # U: Confounders ----
 # note- since this is logistic (not clogit), we need to include matching factors
 U = data_hcc_not_missing_genetics |> 
-  tidylog::select(alcohol_intake,
+  tidylog::select(alcohol_intake_cat,
                   smokestatus, 
                   q1_dp_amds_totscore,
+                  diabetes,
                   q1_fdgp7, 
                   studyarea, sex, eth, q1_byr) |> 
   mutate(smokestatus = replace_na(as.character(smokestatus), "missing"))  |> 
-  fastDummies::dummy_cols(select_columns = c("smokestatus", 
+  fastDummies::dummy_cols(select_columns = c("alcohol_intake_cat", 
+                                             "smokestatus", 
                                              "studyarea", 
+                                             "diabetes",
                                              "sex", 
                                              "eth"),
                           remove_selected_columns = TRUE, 
@@ -783,10 +786,8 @@ profiles_gxe = rbind(
   c(e_low,  g_low), 
   c(e_high, g_high)) 
 
-data_hcc_not_missing_genetics <- data_hcc_not_missing_genetics |> 
-  mutate(xxx = if_else(x22_43928850>0.5, 1, 0))
-
-# Test regression
+# Compare results between clogit, logistic, and bhrm-g --------
+# Test logistic
 (reg <- glm(status ~ -1 + pfas_lg2_PFHpA + 
               x22_43928850 +
               pfas_lg2_PFHpA:x22_43928850 +
@@ -801,6 +802,7 @@ data_hcc_not_missing_genetics <- data_hcc_not_missing_genetics |>
 
 View(data.frame(colnames(data_hcc_not_missing_genetics)))
 
+# clogit
 (clogit_res <- clogit(status ~ pfas_lg2_PFHpA + 
                         x22_43928850 +
                         pfas_lg2_PFHpA:x22_43928850 +
@@ -812,7 +814,7 @@ View(data.frame(colnames(data_hcc_not_missing_genetics)))
                         strata(setnum),  
                       data = data_hcc_not_missing_genetics)  |> 
     tidy())
-
+# compare 
 comparison <- tidylog::full_join(reg, clogit_res, 
                                  by = "term", 
                                  suffix = c("_log", 
@@ -821,20 +823,21 @@ comparison <- tidylog::full_join(reg, clogit_res,
   select(term, contains("estimate"), everything()) 
 
 
-# res_out_w_pnpla3w <- BHRM.interaction(
-#   G = G,
-#   E = E,
-#   Y=Y,
-#   U=U,
-#   profiles_pfas = profiles_pfas,
-#   profiles_gene = profiles_gene,
-#   profiles_gxe = profiles_gxe,
-#   family = "binomial",
-#   w=0.99,
-#   selection=FALSE,
-#   n.adapt =5000, 
-#   n.burnin=5000, 
-#   n.sample=5000)
+# Run BHRM-g analysis
+res_out_w_pnpla3w <- BHRM.interaction(
+  G = G,
+  E = E,
+  Y=Y,
+  U=U,
+  profiles_pfas = profiles_pfas,
+  profiles_gene = profiles_gene,
+  profiles_gxe = profiles_gxe,
+  family = "binomial",
+  w=0.99,
+  selection=FALSE,
+  n.adapt =5000,
+  n.burnin=5000,
+  n.sample=5000)
 
 
 ```
