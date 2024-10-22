@@ -1,0 +1,483 @@
+---
+title: 'MEC analysis'
+subtitle: "Association of interactions between SNPs and PFAS with HCC"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+knit: (function(inputFile, encoding) { 
+      out_dir <- 'html_reports';
+      rmarkdown::render(inputFile,
+                        encoding=encoding, 
+                        output_file=file.path(dirname(inputFile), out_dir, '0_2 Interaction between SNPs and PFAS.html')) })
+---
+
+```{r setup snp and pfas, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("!libraries.R")))
+source(fs::path(here::here("!directories.R")))
+source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!load_data.R")))
+
+
+data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
+data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
+data_hcc$q1_fdgp7 = scale(data_hcc$q1_fdgp7)
+```
+
+## Checking SNPs
+**x3_12288284, x14_94378610, x17_66214462, x19_19268740 were excluded from analysis**
+```{r correlation of SNPs}
+pfc_chem_summaries <-  data_hcc %>%
+  dplyr::select(x1_220796686:x22_43928850) %>%
+  pivot_longer(cols = x1_220796686:x22_43928850) %>% 
+  group_by(name) %>% 
+  summarise(pct_one_val   = mean(value == 0 | value == 2, na.rm = TRUE),
+            variance = var(value, na.rm = TRUE),
+            mean    = mean(value, na.rm = TRUE))
+
+snp_name_df <-  tidylog::left_join(pfc_chem_summaries, 
+                                   snp_info, by = c("name" = "snp_name")) |>
+  tidylog::filter(pct_one_val < 0.75) #%>% 
+
+snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
+```
+
+## summary of SNPs
+```{r summary of SNPs}
+summarytools::view(
+  summarytools::dfSummary(data_hcc %>% 
+                            dplyr::select(snp_name_df$name),
+                          style = 'grid',
+                          max.distinct.values = 10, 
+                          plain.ascii =   FALSE, 
+                          valid.col = FALSE, 
+                          headings = FALSE), method = "render")
+```
+
+## summary of SNPs after normalized
+```{r summary of SNPs after normalized}
+data_analysis_hcc_snp <- data_hcc %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_nafld_hcc_snp <- data_nafld_hcc %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+data_analysis_other_hcc_snp <- data_other_hcc %>%
+  # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
+  #           .funs = list(~str_sub(., start = 1, end = 8))) %>%
+  mutate_at(.vars = vars(snp_name_df$name),
+            .funs = list(scld = ~scale(.))) 
+
+
+summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
+                                             dplyr::select(contains("scld"),
+                                                           -contains("pfas")),
+                                           style = 'grid',
+                                           max.distinct.values = 10, 
+                                           plain.ascii =   FALSE, 
+                                           valid.col = FALSE, 
+                                           headings = FALSE), method = "render")
+
+```
+
+
+## Analysis 1: PRS risk score
+```{r }
+prs_frmla_no_int <- paste("status ~ pfas_lg2_PFHpA + prs_wt_median + v1 + v2 + v3 + v4 + v5 + v6", 
+                          paste(covars, collapse = " + "),
+                          "strata(setnum)", sep = " + ") |> 
+  as.formula()
+
+
+prs_frmla_with_int <- paste("status ~ pfas_lg2_PFHpA*prs_wt_median + v1 + v2 + v3 + v4 + v5 + v6", 
+                            paste(covars, collapse = " + "),
+                            "strata(setnum)", sep = " + ") |>
+  as.formula()
+
+
+
+model_no_int   <- clogit(prs_frmla_no_int,   data = data_hcc) 
+model_with_int <- clogit(prs_frmla_with_int, data = data_hcc) 
+anova(model_no_int, model_with_int)
+
+
+# Refit final model
+(model_with_int <- clogit(prs_frmla_with_int, data = data_hcc, 
+                          method = "efron", robust = TRUE)) 
+
+```
+
+
+# Plot interaction results
+```{r}
+res <- emtrends(model_with_int, ~prs_wt_median, var = "pfas_lg2_PFHpA", 
+                at = list(prs_wt_median = c("1", "2"), 
+                          smokestatus_imputed = "Never",
+                          q1_d_chol = 0,
+                          q1_elih_imputed = 0,
+                          q1_fdgp7 = 0,
+                          v1 = 0,
+                          v2 = 0,
+                          v3 = 0,
+                          v4 = 0,
+                          v5 = 0,
+                          v6 = 0)) %>% 
+  data.frame() %>% 
+  select(prs_wt_median, pfas_lg2_PFHpA.trend, asymp.LCL, asymp.UCL) %>%
+  rename(estimate = pfas_lg2_PFHpA.trend,
+         conf_low = asymp.LCL,
+         conf_high = asymp.UCL)%>%
+  mutate(type = ifelse(prs_wt_median == "1", 
+                       "Low Genetic Risk", 
+                       "High Genetic Risk"))
+
+res_pfhpa <- epiomics::owas_clogit(data_hcc , 
+                                   cc_set = "setnum", 
+                                   cc_status = "status", 
+                                   covars = covars,
+                                   omics = "pfas_lg2_PFHpA",
+                                   conf_int = TRUE) %>%
+  mutate(type = "Without accounting for genetic risk") %>%
+  bind_rows(res) %>%
+  mutate(odds_ratio = exp(estimate),
+         exp_ci_low = exp(conf_low),
+         exp_ci_high = exp(conf_high),
+         group = if_else(str_detect(type, "Without"), "overall", "with genetic")) 
+
+(pfhpa_hcc_main <- res_pfhpa  %>%
+    ggplot(aes(x = factor(type, 
+                          levels = c("High Genetic Risk", 
+                                     "Low Genetic Risk", 
+                                     "Without accounting for genetic risk")),
+               y = exp(estimate))) +
+    geom_point(size = 1) +
+    geom_errorbar(aes(ymin = exp(conf_low),
+                      ymax = exp(conf_high)),
+                  width = 0) +
+    geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+    ylab("Odds Ratio (95% CI)") +
+    # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+    # facet_grid(.~ factor(type, levels = c("Original Effect Est.", "Effect Est. if reference polymorphism", "Effect Est. if high-risk polymorphism")), scales = "free_y")+
+    facet_grid(group ~ ., scales = "free_y", space = "free_y")+
+    theme(panel.background = element_rect(fill="white"), 
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_blank(),
+          # strip.text.x = element_blank(),
+          text = element_text(size = 12),
+          # axis.text.x =element_text(angle = 60, hjust = 1),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "bottom",
+          legend.title = element_blank())+
+    coord_flip()
+)
+
+ggsave(filename = fs::path(dir_figures,
+                           "main_figures",
+                           "Fig2. Interaction of PFHpA with NAFLD PRS_median.jpeg"),
+       width =5,
+       height = 2,
+       dpi = 600,
+       bg = "white")
+```
+
+
+
+# Analysis 2: All SNPS
+
+* Model1: outcome ~ one pfas + one SNP + pfas * snp
+```{r interaction between PFAS and SNPs hcc}
+# 1. Set Covariates ----
+# Covariates for main exposure outcome associations
+covariate_input <- paste(covars, collapse = " + ")
+
+# create dataframe with names of dependent vars (PFAS) 
+pfas_names <- tibble(exposure = pfas_name)
+
+## create dataframe with names of SNP vars ----
+snp_name <- tibble(snp = snp_name_scld)
+
+pfas_snp <- expand_grid(pfas_names, snp_name) %>%
+  mutate(pfas_snp = paste(exposure,"*",snp)) 
+
+# Get Model covariates 
+covar_names <- tibble(covariates =  covariate_input)
+
+# 2. Make all clogit formulas ----
+ind_vars <- expand_grid(pfas_snp,covar_names) |>  
+  mutate(formula = paste("status ~ v1 + v2 + v3 + v4 + v5 + v6",
+                         "+", pfas_snp,
+                         "+", covariates, 
+                         "+strata(setnum)") |>
+           str_replace("\\+  \\+", " + "))
+
+ind_vars$clogit_out <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis_hcc_snp,
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+
+# ind_vars$clogit_out1 <- map(
+#   ind_vars$formula, 
+#   ~clogit(as.formula(.),
+#           data = data_analysis_hcc_japan_snp,
+#           method = "efron",
+#           robust = TRUE
+#   ) %>%
+#     tidy(., conf.int = TRUE, level = 0.95) %>% 
+#     mutate(
+#       odds_ratio = exp(estimate),
+#       exp_ci_low = exp(conf.low),
+#       exp_ci_high = exp(conf.high),
+#       model_type = "clogit")) 
+# 
+# 
+# ind_vars$clogit_out2 <- map(
+#   ind_vars$formula, 
+#   ~clogit(as.formula(.),
+#           data = data_analysis_hcc_latino_snp,
+#           method = "efron",
+#           robust = TRUE
+#   ) %>%
+#     tidy(., conf.int = TRUE, level = 0.95) %>% 
+#     mutate(
+#       odds_ratio = exp(estimate),
+#       exp_ci_low = exp(conf.low),
+#       exp_ci_high = exp(conf.high),
+#       model_type = "clogit"))
+
+# Get final data -------------------
+all_results_df_hcc <- ind_vars %>% 
+  unnest(clogit_out) %>% 
+  dplyr::select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+
+# all_results_df_hcc_japan <- ind_vars %>%
+#   unnest(clogit_out1) %>%
+#   dplyr::select(model_type, covariates, everything()) %>%
+#   mutate(sig = case_when(p.value < 0.05 ~ "Sig",
+#                          p.value >= 0.05 ~ "Not Sig"),
+#          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+# 
+# all_results_df_hcc_latino <- ind_vars %>% 
+#   unnest(clogit_out2) %>% 
+#   dplyr::select(model_type, covariates, everything()) %>%
+#   mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+#                          p.value >= 0.05 ~ "Not Sig"),
+#          effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high))
+
+## Adding modify variable names, add type or category info for data-----
+
+### All races
+all_results_df_hcc1 <- all_results_df_hcc %>% 
+  # bind_rows(intercept_data) %>% 
+  filter(grepl("lg2",term)|grepl("x", term)) %>%
+  dplyr::select(exposure, snp, term, p.value, odds_ratio, contains("exp_")) %>%
+  mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
+
+
+all_results_df_hcc2 <- all_results_df_hcc1 |> 
+  mutate(
+    effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
+                            str_detect(term, "^x")   ~ "Genetic Risk",
+                            TRUE ~ "PFAS")) |>
+  filter(!is.na(effect_type)) 
+
+
+all_results_df_hcc3 <- all_results_df_hcc2 %>% 
+  group_by(pfas_name) %>%
+  mutate(snp = str_replace_all(snp, "_scld", ""),
+         p_adjusted = p.adjust(p.value, method = "fdr"),
+         sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                         p.value < 0.05 ~ "Sig.",
+                         TRUE ~ "Not Sig.")) %>%
+  ungroup() %>%
+  tidylog::left_join(snp_info%>%
+                       dplyr::select(rsid, snp_name, gene), by = c("snp"="snp_name"))
+
+### Japanese American
+# all_results_df_hcc_japan1 <- all_results_df_hcc_japan %>% 
+#   # bind_rows(intercept_data) %>% 
+#   filter(grepl("lg2",term)|grepl("x", term)) %>%
+#   dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+#   mutate(pfas_name = str_remove(exposure, "pfas_lg2_"))
+# 
+# 
+# all_results_df_hcc_japan2 <- all_results_df_hcc_japan1 |> 
+#   mutate(
+#     effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
+#                             str_detect(term, "^x")   ~ "Genetic Risk",
+#                             TRUE ~ "PFAS")) |>
+#   filter(!is.na(effect_type)) 
+# 
+# all_results_df_hcc_japan3 <- all_results_df_hcc_japan2 %>% 
+#   filter(!grepl("x14", term)) |>
+#   group_by(pfas_name) %>%
+#   mutate(snp = str_replace_all(snp, "_scld", ""),
+#          p_adjusted = p.adjust(p.value, method = "fdr"),
+#          sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+#                          p.value < 0.05 ~ "Sig.",
+#                          TRUE ~ "Not Sig.")) %>%
+#   tidylog::left_join(snp_info%>%
+#                        dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+#   ungroup()
+# ## Latino 
+# 
+# all_results_df_hcc_latino1 <- all_results_df_hcc_latino %>% 
+#   # bind_rows(intercept_data) %>% 
+#   filter(grepl("lg2",term)|grepl("x", term)) %>%
+#   dplyr::select(exposure, snp,term, p.value, odds_ratio, contains("exp_")) %>%
+#   mutate(pfas_name = str_remove(exposure, "pfas_lg2_")) 
+# 
+# 
+# all_results_df_hcc_latino2 <- all_results_df_hcc_latino1 |> 
+#   mutate(
+#     effect_type = case_when(str_detect(term, ":")   ~ "PFAS and SNP",
+#                             str_detect(term, "^x")   ~ "Genetic Risk",
+#                             TRUE ~ "PFAS")) |>
+#   filter(!is.na(effect_type)) 
+# 
+# all_results_df_hcc_latino3 <- all_results_df_hcc_latino2 %>% 
+#   filter(!grepl("x14", term)) |>
+#   group_by(pfas_name) %>%
+#   mutate(snp = str_replace_all(snp, "_scld", ""),
+#          p_adjusted = p.adjust(p.value, method = "fdr"),
+#          sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+#                          p.value < 0.05 ~ "Sig.",
+#                          TRUE ~ "Not Sig.")) %>%
+#   tidylog::left_join(snp_info%>%
+#                        dplyr::select(rsid, snp_name, genes), by = c("snp"="snp_name")) %>%
+#   ungroup()
+
+all_result <- all_results_df_hcc3 %>%
+  mutate(type = "All races") %>%
+  # bind_rows(all_results_df_hcc_japan3 %>% 
+  #             mutate (type = "Japanese American")) %>%
+  # bind_rows(all_results_df_hcc_latino3 %>%
+  #             mutate (type = "Latino"))%>%
+  mutate(name_plot = case_when(effect_type == "PFAS" ~ paste0(gene, "(", " PFAS Main Effect)"),
+                                effect_type == "Genetic Risk" ~ paste0(gene, " Main Effect"),
+                                effect_type == "PFAS and SNP" ~ paste0(gene, "*",
+                                                                       "PFAS Interaction")))
+
+all_result_new <- all_results_df_hcc3 %>%
+  mutate(type = "All races") %>%
+  # bind_rows(all_results_df_hcc_japan3 %>% 
+  #             mutate (type = "Japanese American")) %>%
+  # bind_rows(all_results_df_hcc_latino3 %>%
+  #             mutate (type = "Latino"))%>%
+  mutate(name_plot  = case_when(effect_type == "PFAS" ~ paste0(snp, " (", "PFAS Main Effect)"),
+                                effect_type == "Genetic Risk" ~ paste0(snp, " Main Effect"),
+                                effect_type == "PFAS and SNP" ~ paste0(snp, "*",
+                                                                       "PFAS Interaction")), 
+         gene = if_else(is.na(gene), snp, gene), 
+         rsid = if_else(is.na(rsid), snp, rsid) ) 
+
+# Calculate adjusted p-values
+intef <- all_result_new |> 
+  # tidylog::filter(effect_type == "PFAS and SNP") |>
+  group_by(type) |> 
+  mutate(p_adjust2 = p.adjust(p.value, method = "fdr")) |> 
+  ungroup()
+
+pfhpa_gene_interaction <- intef |> 
+  tidylog::filter(effect_type == "PFAS and SNP") |>
+  tidylog::filter(str_detect(exposure, "PFHpA"), 
+                  type == "All races") 
+
+min(pfhpa_gene_interaction$p_adjust2)
+min(pfhpa_gene_interaction$p_adjusted)
+# .12
+
+# writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
+```
+
+
+# Examine PFHpA Interaction results
+```{r}
+pfhpa_gene_interaction <- all_result_new |> 
+  tidylog::filter(str_detect(exposure, "PFHpA"), 
+                  # effect_type == "PFAS and SNP", 
+                  type == "All races") |> 
+  mutate(effect_type = fct_relevel(effect_type, 
+                                   "PFAS", "Genetic Risk", "PFAS and SNP"))
+
+sig_int <- pfhpa_gene_interaction |> 
+  tidylog::filter(effect_type == "PFAS and SNP") 
+
+# save file
+# write_csv(sig_int |> select(rsid, genes, p.value), 
+#           fs::path(dir_result, "Significant PFHpA x SNP interactions.csv"))
+
+# Create dataset for viewing #
+pfhpa_gxe_w <- pfhpa_gene_interaction |> 
+  # tidylog::filter(snp %in% sig_int$snp) |>
+  tidylog::select(exposure, effect_type,
+                  rsid, gene, odds_ratio, p.value, type) |> 
+  pivot_wider(names_from = effect_type, values_from = c(odds_ratio, p.value)) 
+
+pfhpa_gxe_w$`p.value_PFAS and SNP`[pfhpa_gxe_w$gene == "PNPLA3"]
+# View(pfhpa_gene_interaction)
+
+# Plot 
+pfhpa_gene_interaction |> 
+  mutate(gene_snp = str_c(rsid, "\n", gene)) |>
+  tidylog::filter(snp %in% sig_int$snp) |>  
+  ggplot(aes(x = effect_type, 
+             y = odds_ratio, 
+             color = p.value < 0.05)) +
+  geom_point(position = position_dodge(width = .3)) +
+  geom_errorbar(aes(ymin = exp_ci_low, ymax = exp_ci_high), width = 0) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  facet_grid(~gene_snp) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
+  labs(title = "PFHpA and SNP Interaction",
+       x = "Effect",
+       y = "Odds Ratio",
+       color = "Significance") +
+  scale_color_manual(values = c("grey60", "black"))
+
+
+# Final plot
+pfhpa_gene_interaction |> 
+  mutate(gene_snp = str_c(rsid, " (", genes, ")", sep = "")) |>
+  tidylog::filter(snp %in% sig_int$snp) |>  
+  ggplot(aes(y = fct_rev(effect_type), 
+             x = odds_ratio)) +
+  geom_point(position = position_dodge(width = .3)) +
+  geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high), width = 0) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  facet_wrap(~gene_snp, ncol = 1) +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) +
+  labs(#title = "PFHpA and SNP Interaction",
+    y = NULL,
+    x = "Odds Ratio (95% CI)",
+    color = "Significance") 
+```

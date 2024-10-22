@@ -19,7 +19,6 @@ snp_gene_df <- read_csv(
 snp_gene_df <- snp_gene_df |> 
   tidylog::filter(odds_ratio > 1)
 
-epiomics::meet_m
 
 # Read eQTLs from FIVEx
 eqtl_df <- readxl::read_xlsx(fs::path(dir_data,

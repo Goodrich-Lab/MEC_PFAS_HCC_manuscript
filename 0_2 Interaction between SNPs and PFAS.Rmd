@@ -22,7 +22,6 @@ knit: (function(inputFile, encoding) {
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
 
-
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
 source(fs::path(here::here("functions.R")))
