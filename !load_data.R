@@ -9,11 +9,11 @@ data <- readRDS(fs::path(
 
 table(is.na(data$bmi))
 
-data |> 
-  select(-diagnosis_age, -year_between, 
-         -contains("chem_"), -contains("met_"), -contains("pfas_"), 
-         -c(x1_220796686:prs_uw_tertile)) |>
-  naniar::gg_miss_upset(nintersects = 20, nsets = 15)
+# data |> 
+#   select(-diagnosis_age, -year_between, 
+#          -contains("chem_"), -contains("met_"), -contains("pfas_"), 
+#          -c(x1_220796686:prs_uw_tertile)) |>
+#   naniar::gg_miss_upset(nintersects = 20, nsets = 15)
 
 # calorie <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
 #                                     "0_data_processing",
@@ -144,7 +144,7 @@ pfas_name_cat <- colnames(data %>% dplyr::select(contains("quartile")))
 
 
 # covariates
-covars = c("smokestatus_imputed", "alcohol_intake", "q1_d_chol", "q1_elih_imputed") 
+covars = c("smokestatus_imputed", "q1_d_chol", "q1_elih_imputed") 
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 
 
