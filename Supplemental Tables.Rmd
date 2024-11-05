@@ -30,7 +30,7 @@ data_hcc$q1_fdgp7 = scale(data_hcc$q1_fdgp7)
 ```{r}
 s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx")) %>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(exp(estimate), 2), " [", 
-                               round(exp(conf_low), 2), ",",
+                               round(exp(conf_low), 2), ", ",
                                round(exp(conf_high), 2),"]"),
          `P-Value` = signif(p_value, 2))%>% 
   select(type, pfas_name, `Odds Ratio[95%CI]`,`P-Value`)%>%
@@ -66,7 +66,7 @@ s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analys
     #                       type == "Japanese American" ~ "Japanese American \n(n = 182)", 
     #                     type == "Latino"~ "Latino \n(n = 160)"))%>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
-                               round(exp_ci_low, 2), ",",
+                               round(exp_ci_low, 2), ", ",
                                round(exp_ci_high, 2),"]"),
          `P-Value` = signif(p.value, 2),
          `P trend` = signif(p_trend, 2))%>% 
@@ -101,7 +101,7 @@ s3 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction.xlsx")) %
                             TRUE ~ "SNP Main Effect"),
            name = factor(name, levels = c("SNP * PFAS Interaction", "SNP Main Effect", "PFAS Main Effect"))) %>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
-                               round(exp_ci_low, 2), ",",
+                               round(exp_ci_low, 2), ", ",
                                round(exp_ci_high, 2),"]"),
          `P-Value` = signif(p.value, 2))%>% 
   select(type, pfas_name, snp, genes, name, rsid, `Odds Ratio[95%CI]`,`P-Value`)%>%

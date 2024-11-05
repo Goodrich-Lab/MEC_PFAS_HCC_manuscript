@@ -84,7 +84,6 @@ res_hcc1 <- res_hcc |>
 
 ### Fig1a. association of pfas and hcc - HCC
 ```{r plot with covars only, fig.width=10, fig.height=5}
-### Create metabolites Coefficient Plots
 ### Rename PFAS for plotting
 res_hcc2 <- res_hcc1 %>%
   mutate(pfas_name = case_when(pfas_name == "4H_PFBA" ~ "4H-PFBA",
@@ -130,17 +129,6 @@ res_hcc2 <- res_hcc1 %>%
   coord_flip() +
   scale_color_manual(values = c("grey","red","purple")))
 
-# res_comb <- data.frame()
-# res_comb<- readxl::read_xlsx(fs::path(dir_result, "main_analysis_result_df.xlsx"))
-# res_comb <- res_comb %>% bind_rows(res_hcc2)
-# writexl::write_xlsx(res_comb, fs::path(dir_result, "main_analysis_result_df.xlsx"))
-
-# ggsave(filename = fs::path(dir_figures,
-#                            "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth.jpeg"),
-#        width = 10,
-#        height = 5,
-#        dpi = 300,
-#        bg = "white")
 # 
 writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Sensitivity Analysis.xlsx"))
 
