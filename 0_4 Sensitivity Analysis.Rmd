@@ -18,17 +18,20 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,co
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
+
+data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
+data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
 ```
 
 
-## Analysis1. Conditional logistic regression - HCC
+## Analysis1. Conditional logistic regression - HCC 
 **Outcome: HCC vs control**
 
 **Exposure: lg2 transformed and then normalzied PFAS**
 
-**Covars: alcohol, smoking, amds, shellfish, total calories**
+**Covars: smoking, cholesterol elih and ancestry score **
 
 **Analysis: conditional logistic regression**
 
@@ -37,14 +40,8 @@ source(fs::path(here::here("!load_data.R")))
 **All races(474), White(46), African American(52), Japanese American(182), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1}
-# covars <- c("q1_dp_amds_totscore", "q1_fdgp7", 
-#             "alcohol_intake", "smokestatus",
-#             "lg_q1_calories")
-
-covars <- c("q1_dp_amds_totscore", "q1_fdgp7", 
-            "alcohol_intake", "smokestatus",
-            "v1", "v2", "v3", "v4", "v5", "v6")
-
+## Covariates
+covars <- c("smokestatus_imputed","q1_d_chol","q1_elih_imputed","v1", "v2", "v3", "v4", "v5", "v6")
 res_hcc <- epiomics::owas_clogit(data_hcc , 
                                     cc_set = "setnum", 
                                     cc_status = "status", 
@@ -145,7 +142,7 @@ res_hcc2 <- res_hcc1 %>%
 #        dpi = 300,
 #        bg = "white")
 # 
-# writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx"))
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Sensitivity Analysis.xlsx"))
 
 
 (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -174,13 +171,13 @@ res_hcc2 <- res_hcc1 %>%
   scale_color_manual(values = c("black","red","purple")))
 
 
-ggsave(filename = fs::path(dir_figures,
-                           "sensitivity",
-                           "Fig. Sensitivity Analysis PFAS main effect_Overall.jpeg"),
-       width = 7,
-       height = 5,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            "sensitivity",
+#                            "Fig. Sensitivity Analysis PFAS main effect_Overall.jpeg"),
+#        width = 7,
+#        height = 5,
+#        dpi = 300,
+#        bg = "white")
 ```
 
 

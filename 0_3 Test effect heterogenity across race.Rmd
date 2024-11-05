@@ -19,8 +19,11 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,co
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
+
+data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
+data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
 
 ```
 
@@ -29,7 +32,7 @@ source(fs::path(here::here("!load_data.R")))
 * Model1: outcome ~ one pfas + one SNP + pfas * snp
 ```{r interaction between PFAS and SNPs hcc}
  
-covariate_input <- " alcohol_intake +  smokestatus + alcohol_intake + q1_dp_amds_e_totscore + q1_fdgp7" 
+covariate_input <- " smokestatus_imputed +  q1_d_chol + q1_elih_imputed" 
 
 ## create dataframe with names of dependent vars (PFAS) ----
 pfas_names <- tibble(exposure = pfas_name)
