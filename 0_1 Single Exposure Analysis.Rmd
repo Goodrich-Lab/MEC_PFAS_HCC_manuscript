@@ -12,14 +12,18 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
+
 ```{r setup univariate analysis cat pfas, include=FALSE, echo=FALSE}
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
+
+data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
+data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
 ```
 
 ## Analysis1. Conditional logistic regression - HCC
@@ -27,7 +31,7 @@ source(fs::path(here::here("!load_data.R")))
 
 **Exposure: lg2 transformed and then normalzied PFAS**
 
-**Covars: alcohol, smoking, amds, shellfish**
+**Covars: smoking, cholesterol, ELIH**
 
 **Analysis: conditional logistic regression**
 
@@ -78,7 +82,6 @@ res_hcc1 <- res_hcc |>
 
 ### Fig1a. association of pfas and hcc - HCC
 ```{r plot with covars only, fig.width=10, fig.height=5}
-### Create metabolites Coefficient Plots
 ### Rename PFAS for plotting
 res_hcc2 <- res_hcc1 %>%
   mutate(pfas_name = case_when(pfas_name == "4H_PFBA" ~ "4H-PFBA",
@@ -132,14 +135,14 @@ res_hcc2 <- res_hcc1 %>%
 # res_comb <- res_comb %>% bind_rows(res_hcc2)
 # writexl::write_xlsx(res_comb, fs::path(dir_result, "main_analysis_result_df.xlsx"))
 
-# ggsave(filename = fs::path(dir_figures,
-#                            "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth.jpeg"),
-#        width = 10,
-#        height = 5,
-#        dpi = 300,
-#        bg = "white")
+ggsave(filename = fs::path(dir_figures,
+                           "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth.jpeg"),
+       width = 10,
+       height = 5,
+       dpi = 300,
+       bg = "white")
 # 
-# writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx"))
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC.xlsx"))
 
 
 (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -440,7 +443,7 @@ all_result_df3 <- all_result_df2 %>%
                           type == "Latino"~ "Latino \n(n = 160)",
                           type == "Others" ~ "Others \n(n = 132)"))
 
-# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis.xlsx"))
+writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis.xlsx"))
 
 (pfhpa_hcc <-  ggplot(all_result_df3 %>% 
                         filter(pfas_name == "PFHpA") %>%
@@ -506,13 +509,13 @@ p1 <- pfhpa_hcc + geom_text(
                            align = "v",
                            axis = "lt"))
 
-# ggsave(filename = fs::path(dir_figures,
-#                            "main_figures",
-#                            "Fig1. Main Effect Final.jpeg"),
-#        width = 10,
-#        height = 8,
-#        dpi = 300,
-#        bg = "white")
+ggsave(filename = fs::path(dir_figures,
+                           "main_figures",
+                           "Fig1. Main Effect Final.jpeg"),
+       width = 10,
+       height = 8,
+       dpi = 300,
+       bg = "white")
 ```
 
 

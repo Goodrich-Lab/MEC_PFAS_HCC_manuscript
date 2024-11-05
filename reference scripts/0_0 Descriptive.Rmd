@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,co
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
 ```
 
@@ -51,7 +51,7 @@ data_l %>% ggplot(aes(x = value )) +
 ## Data summary {.tabset}
 ### Data summary for overall HCC data
 ```{r pfas summary for hcc data only after adding missing, results = 'asis'}
-table1::table1(~.|status, data_hcc %>% select(status, all_of(pfas_name), blood_age, bmi_cat, alcohol_intake_cat,smokestatus, diabetes, eth, studyarea, sex, year_between, q1_dp_amds_totscore, q1_fdgp7, q1_calories))
+table1::table1(~.|status, data_hcc %>% select(status, all_of(pfas_name), blood_age, bmi_cat, alcohol_intake_cat,smokestatus, diabetes, eth, studyarea, sex, year_between, smokestatus_imputed, q1_d_chol, q1_elih_imputed))
 ```
 
 ### Data summary for NAFLD related HCC data
@@ -67,7 +67,7 @@ table1::table1(~.|status, data_other_hcc  %>%select(status, pfas_name, blood_age
 
 ### Data summary for overall HCC data 
 ```{r pfas summary for hcc data split by ethnicity,results='asis'}
-data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,q1_dp_amds_totscore, q1_fdgp7, q1_calories) %>%
+data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,smokestatus_imputed, q1_d_chol, q1_elih_imputed) %>%
   tbl_summary(by = status,
               type = all_continuous() ~ "continuous2",
               statistic = list(
@@ -213,10 +213,10 @@ cor_matrix_df_4 %>%
 
 
 # Save Figure
-ggsave(corplot,
-       filename = fs::path(dir_figures,
-                           "correlation_plot.jpeg"),
-       width = 12,
-       height = 10)
+# ggsave(corplot,
+#        filename = fs::path(dir_figures,
+#                            "correlation_plot.jpeg"),
+#        width = 12,
+#        height = 10)
 ```
 

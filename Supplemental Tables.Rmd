@@ -18,8 +18,12 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,co
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
+
+data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
+data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
+data_hcc$q1_fdgp7 = scale(data_hcc$q1_fdgp7)
 ```
 
 ## Supplemental Table1

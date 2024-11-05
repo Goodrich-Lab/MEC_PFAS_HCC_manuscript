@@ -24,13 +24,12 @@ knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,co
 
 source(fs::path(here::here("!libraries.R")))
 source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("functions.R")))
+source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
 
 
 data_hcc$q1_d_chol = scale(data_hcc$q1_d_chol)
 data_hcc$q1_elih_imputed = scale(data_hcc$q1_elih_imputed)
-data_hcc$q1_fdgp7 = scale(data_hcc$q1_fdgp7)
 ```
 
 ## Checking SNPs
@@ -97,7 +96,7 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
 
 
 ## Analysis 1: PRS risk score
-```{r }
+```{r}
 prs_frmla_no_int <- paste("status ~ pfas_lg2_PFHpA + prs_wt_median + v1 + v2 + v3 + v4 + v5 + v6", 
                           paste(covars, collapse = " + "),
                           "strata(setnum)", sep = " + ") |> 
@@ -195,6 +194,8 @@ ggsave(filename = fs::path(dir_figures,
        height = 2,
        dpi = 600,
        bg = "white")
+
+writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction.xlsx"))
 ```
 
 
