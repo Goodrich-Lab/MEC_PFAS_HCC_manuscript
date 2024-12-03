@@ -125,5 +125,8 @@ s3 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction.xlsx")) %
          )
   
 writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and SNP.xlsx"))
+
+s4 <- s3 %>% filter(pfas_name == "PFHpA")
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFHpA and SNP.xlsx"))
 ```
 
