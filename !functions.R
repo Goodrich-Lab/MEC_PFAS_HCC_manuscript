@@ -1,33 +1,67 @@
 # Rename PFAS -----------------------
-rename_pfas_new <- function(pfas_names){
+rename_pfas <- function(pfas_names){
   x <- tibble(pfas = pfas_names)
   pfas2 <-  x %>%
-    mutate(pfas2 = str_split_fixed(pfas, "pfas_", 2)[,2]) %>%
-    mutate(pfas2 = str_split_fixed(pfas2, "_raw", 2)[,1]) %>%
-    mutate(pfas2 = case_when(pfas2 == "4H_PFBA" ~ "4H-PFBA",
-                                        pfas2 == "10_2_FToH" ~ "10:2 FTOH",
-                                        pfas2 == "2_aminohexafluoropropan_2_ol" ~ "2-Aminohexafluoropropan-2-ol",
-                                        pfas2 == "Me_PFHxA" ~ "MePFHxA",
-                                        TRUE ~ pfas2) %>% 
-             as.factor() %>% 
-             fct_relevel(., 
-                    "PFHpA", 
-                    "4H-PFBA", 
-                    "PFBS", 
-                    "NMeFOSAA", 
-                    "PFDA",
-                    "10:2 FTOH", 
-                    "PFPrA",
-                    "PFDoS",
-                    "PFNA",
-                    "PFHxS",
-                    "PFUnDA",
-                    "PFOS",
-                    "POSF",
-                    "PFOA", 
-                    "PFHpS",
-                    "2-Aminohexafluoropropan-2-ol",
-                    "MePFHxA"))
+    mutate(pfas = str_remove_all(pfas, "pfas_t_")) %>%
+    mutate(pfas = case_when(pfas == "PFHPA" ~ "PFHpA",
+                             pfas == "PFHXA" ~ "PFHxA",
+                             pfas == "PFHXS" ~ "PFHxS",
+                             pfas == "PFUNDA" ~ "PFUnDA",
+                             pfas == "PFHPS" ~ "PFHpS",
+                             pfas == "NMFOSAA" ~ "NMeFOSAA",
+                             pfas == "NETFOSAA" ~"NEtFOSAA",
+                             TRUE ~ pfas))
+  return(pfas2$pfas)
+}
+
+# Model with interaction of prs_wt and pfas
+model_interaction <- function(pfas){
+  # Formula
+  formula_with_int <- as.formula(
+    paste("status ~", paste0(pfas, "*prs_wt"),
+          "+ v1 + v2 + v3 + v4 + v5 + v6 +", 
+          paste(covars[1:3], collapse = " + "),
+          "+ strata(setnum)"))
+  # Model
+  model_with_int <- clogit(formula_with_int, 
+                           data = data_hcc, 
+                           method = "efron", 
+                           robust = TRUE)
+  # Interaction effect at high/low PRS
+  res <- emtrends(model_with_int, ~prs_wt, var = pfas, 
+                  at = list(prs_wt = c(cuts[1], cuts[9]), 
+                            smokestatus_imputed = "Never",
+                            diabetes = "No",
+                            q1_edih = 0,
+                            v1 = 0,
+                            v2 = 0,
+                            v3 = 0,
+                            v4 = 0,
+                            v5 = 0,
+                            v6 = 0),
+                  transform = NULL) %>%
+    data.frame() %>%
+    select(prs_wt, ends_with(".trend"), asymp.LCL, asymp.UCL) %>%
+    rename(estimate = ends_with(".trend"),
+           conf_low = asymp.LCL,
+           conf_high = asymp.UCL) %>%
+    mutate(type = ifelse(prs_wt == cuts[1], "Low Genetic Risk", "High Genetic Risk"))
   
-  return(pfas2$pfas2)
+  # Main effect without interaction
+  res_main <- epiomics::owas_clogit(data_hcc , 
+                                    cc_set = "setnum", 
+                                    cc_status = "status", 
+                                    covars = covars,
+                                    omics = pfas,
+                                    conf_int = TRUE) %>%
+    mutate(type = "Overall (no interaction with PRS)")
+  # Combine results
+  res_combined <- bind_rows(res_main, res) %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           group = if_else(str_detect(type, "Overall"), "overall", "with genetic"),
+           pfas = pfas)
+  
+  res_combined
 }
