@@ -16,10 +16,10 @@ editor_options:
 options(knitr.table.format = "html")
 knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
 
-source(fs::path(here::here("!libraries.R")))
-source(fs::path(here::here("!directories.R")))
-source(fs::path(here::here("!functions.R")))
-source(fs::path(here::here("!load_data.R")))
+source(fs::path(here::here("1_Project_Setup/!libraries.R")))
+source(fs::path(here::here("1_Project_Setup/!directories.R")))
+source(fs::path(here::here("1_Project_Setup/!functions.R")))
+source(fs::path(here::here("1_Project_Setup/!load_data.R")))
 
 ```
 
