@@ -5,7 +5,8 @@
 # Read Data ---------------------------------------------------------------
 data <- readRDS(fs::path(
   dir_cleaned_data,
-  "hhear_complete_data_v4.RDS")) 
+  "hhear_complete_data_v5.RDS")) %>%
+  mutate(pfas_t_PFBS_detected = ifelse(pfas_t_PFBS_detected == "Detected", 1, 0))
 
 
 snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
@@ -24,7 +25,7 @@ untargeted_pfas_name <- colnames(data %>%
                         dplyr::select(contains("_ut_"), -contains("_detected")))
 
 pfas_name <- colnames(data %>% 
-                        dplyr::select(contains("pfas_t_")))
+                        dplyr::select(contains("pfas_t_")))[-13]
 
 prs_name <- c("prs_uw", "prs_uw_tertile")
 
@@ -32,11 +33,18 @@ prs_name <- c("prs_uw", "prs_uw_tertile")
 # Add PFAS quartiles, based on controls only-------
 pfas_quartile <- data %>%
   filter(casetype == "Control") 
-
+cuts_df <- data.frame()
 for(pfas in pfas_name) {
   data_temp_control <- pfas_quartile %>% dplyr::select(pfas)
   cuts <- quantile(data_temp_control[1], 
-                   c(1/4,1/2,3/4), na.rm = TRUE)
+                   c(0, 1/4,1/2,3/4, 1), na.rm = TRUE)
+  cuts_df <- cuts_df %>% 
+    bind_rows(data.frame(pfas_name = pfas,
+                         Q0 = cuts[1],
+                         Q1 = cuts[2],
+                         Q2 = cuts[3],
+                         Q3 = cuts[4],
+                         Q4 = cuts[5]))
   data_temp <- data %>% dplyr::select(pfas)
   data_temp[2] <- case_when(data_temp[1] <= cuts[1] ~ 1, 
                             data_temp[1] <= cuts[2] ~ 2,
@@ -45,7 +53,19 @@ for(pfas in pfas_name) {
   colnames(data_temp)[2] <- paste0(pfas, "_quartile")
   data <- data %>% bind_cols(data_temp %>% dplyr::select(contains("quartile")))
 }
+cuts_df_l <- cuts_df %>% 
+  mutate(across(where(is.numeric), ~ signif(.x, 2)))%>%
+  mutate(Quantile1 = paste0("≤ ", Q1 ),
+         Quantile2 = paste0("(", Q1, ", ", Q2, "]"),
+         Quantile3 = paste0("(", Q2, ", ", Q3, "]"),
+         Quantile4 = paste0("> ", Q3))%>%
+  select(-Q0, -Q1, -Q2, -Q3, -Q4) %>%
+  pivot_longer(
+               cols = c(Quantile1, Quantile2, Quantile3, Quantile4),
+               names_to = "quartile",
+               values_to = "value")
 
+writexl::write_xlsx(cuts_df_l,fs::path(dir_result, "quartile_cuts_df.xlsx"))
 # filter out controls/cases with no pfas values
 # data <- data %>% filter(!setnum %in% c("1938", "1350", "1006")) # This part is for untargeted PFAS
 

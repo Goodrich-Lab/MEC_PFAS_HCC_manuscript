@@ -25,7 +25,7 @@ source(fs::path(here::here("!load_data.R")))
 
 ## Supplemental Table1
 ```{r}
-s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC_0416.xlsx")) %>%
+s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC_0828.xlsx")) %>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(exp(estimate), 2), " [", 
                                round(exp(conf_low), 2), ", ",
                                round(exp(conf_high), 2),"]"),
@@ -34,11 +34,10 @@ s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC_0416.xl
   pivot_wider(id_cols = "pfas_name",
               names_from = "type",
               values_from = c(`Odds Ratio[95%CI]`, `P-Value`)) %>%
-  # arrange(desc(`Odds Ratio[95%CI]_Overall \n(n = 474)`))
-  arrange(desc(`Odds Ratio[95%CI]_Overall \r\n(n = 480)`))%>%
+  arrange(desc(`Odds Ratio[95%CI]_Overall \r\n(n = 464)`))%>%
   mutate(pfas_name = rename_pfas(pfas_name))
 
-s4 <- readxl::read_xlsx(fs::path(dir_result, "heterogeneity_res.xlsx")) 
+s4 <- readxl::read_xlsx(fs::path(dir_result, "heterogeneity_res_0828.xlsx")) 
 
 s1_full <- s1 %>% 
   tidylog::left_join(s4 %>% select(pfas_name, or_ci, I2, Q, Q_pval), 
@@ -49,13 +48,13 @@ s1_full <- s1 %>%
          Q = round(Q,2),
          Q_pval = round(Q_pval, 2))
 
-writexl::write_xlsx(s1_full, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC_0416.xlsx")) 
+writexl::write_xlsx(s1_full, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC_0828.xlsx")) 
 
 ```
 
 ## Supplemental Table 2
 ```{r s2}
-s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analysis_0416.xlsx")) %>%
+s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analysis_0828.xlsx")) %>%
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
                                round(exp_ci_low, 2), ", ",
                                round(exp_ci_high, 2),"]"),
@@ -76,9 +75,10 @@ s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analys
 writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose response_0423.xlsx"))
 ```
 
+
 ## Supplemental Table S3
 ```{r}
-s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result.xlsx")) %>% 
+s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result_0828.xlsx")) %>% 
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
                                round(exp_ci_low, 2), ", ",
                                round(exp_ci_high, 2),"]"),
@@ -88,13 +88,13 @@ s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result.xlsx")
   mutate(pfas = factor(pfas, levels = s1$pfas_name))%>%
   arrange(pfas)
 
-writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and PRS_0423.xlsx"))
+writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and PRS_0828.xlsx"))
 ```
 
 
 ## Supplemental Table S4
 ```{r}
-s4 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction_0421.xlsx")) %>% 
+s4 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction_0828.xlsx")) %>% 
     mutate(type = case_when(type == "All races" ~ "Overall \n(n = 480)",
                           type == "Japanese American" ~ "Japanese American \n(n = 184)", 
                         type == "Latino"~ "Latino \n(n = 162)"))%>%
@@ -127,8 +127,8 @@ s4 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction_0421.xlsx
          contains("SNP * PFAS Interaction_Latino")
          )
   
-writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFAS and SNP_0421.xlsx"))
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFAS and SNP_0828.xlsx"))
 
 s4_pfhpa <- s4 %>% filter(pfas_name == "PFHpA")
-writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFHpA and SNP_0421.xlsx"))
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFHpA and SNP_0828.xlsx"))
 ```

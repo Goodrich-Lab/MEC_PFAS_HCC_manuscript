@@ -23,31 +23,6 @@ source(fs::path(here::here("!functions.R")))
 source(fs::path(here::here("!load_data.R")))
 ```
 
-## Distribution of the PFAS (raw values)
-```{r distribution of the PFAS}
-data1 <- data %>% 
-  mutate_at(.vars = pfas_name,
-         .funs = ~exp(.))
-
-data_l <- data1 %>% select(pfas_name) %>%
-  pivot_longer(cols = pfas_name)
-
-data_l %>% ggplot(aes(x = value )) +
-  geom_histogram() +
-  facet_wrap(.~name, scale = "free", nrow = 4)
-```
-
-## Distribution of the PFAS (lg2 transformed)
-```{r distribution of the PFAS lg2}
-
-data_l <- data %>% select(pfas_name) %>%
-  pivot_longer(cols = pfas_name)
-
-data_l %>% ggplot(aes(x = value )) +
-  geom_histogram() +
-  facet_wrap(.~name, scale = "free", nrow = 4)
-```
-
 ## Data summary {.tabset}
 ### Data summary for overall HCC data
 ```{r pfas summary for hcc data only after adding missing, results = 'asis'}

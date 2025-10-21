@@ -40,6 +40,32 @@ snp_name_df <-  tidylog::left_join(pfc_chem_summaries,
 
 snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
 ```
+## RAF calculation
+
+```{r}
+crc_b <-data_hcc %>% filter(eth=='African American') %>% pull(sid)
+crc_h <-data_hcc %>% filter(eth=='Native Hawaiian') %>% pull(sid)
+crc_j <-data_hcc %>% filter(eth=='Japanese American') %>% pull(sid)
+crc_l <-data_hcc %>% filter(eth=='Latino') %>% pull(sid)
+crc_w <-data_hcc %>% filter(eth=='White') %>% pull(sid)
+
+ds_correct <- data_hcc %>% select(sid, x1_220796686:x22_43928850) %>%
+  column_to_rownames("sid") %>% t() %>% as.data.frame()
+
+#get single dataset of the risk allele frequency across all race/eth
+raf <- data.frame(ds_correct,         # can carry over any cols from ds_correct as needed
+                  raf = rowSums(ds_correct, na.rm = TRUE)/(2*dim(data_hcc)[1]),
+                  raf_b=rowSums(ds_correct %>% select(any_of(crc_b)), na.rm = TRUE)/(2*length(crc_b)),
+                  raf_h=rowSums(ds_correct %>% select(any_of(crc_h)), na.rm = TRUE)/(2*length(crc_h)),
+                  raf_j=rowSums(ds_correct %>% select(any_of(crc_j)), na.rm = TRUE)/(2*length(crc_j)),
+                  raf_l=rowSums(ds_correct %>% select(any_of(crc_l)), na.rm = TRUE)/(2*length(crc_l)),
+                  raf_w=rowSums(ds_correct %>% select(any_of(crc_w)), na.rm = TRUE)/(2*length(crc_w)))%>%
+  rownames_to_column("snp_name") %>%
+  tidylog::left_join(snp_info %>% select(rsid, snp_name), by = "snp_name")
+
+write_csv(raf, fs::path(dir_result,"Supplemental Tables", "raf_hcc.csv"))
+
+```
 
 ## summary of SNPs
 ```{r summary of SNPs}
@@ -131,7 +157,7 @@ interaction_models <- function(pfas) {
   model_with_int <- clogit(frm_with_int, data = data_hcc)
   
   # ANOVA
-  anova_res <- anova(model_no_int, model_with_int)%>% 
+  anova_res <- anova(model_no_int, model_with_int, test = "Chisq")%>% 
     tidy(conf.int = TRUE) %>%
     mutate(pfas_name = pfas)%>%
     select(pfas_name, everything())
@@ -141,14 +167,14 @@ interaction_models <- function(pfas) {
 
 
 
-(outputs <- map(pfas_name,interaction_models)%>%
+(outputs <- map(c(pfas_name, "pfas_t_PFBS_detected"),interaction_models)%>%
     bind_rows()%>%
     mutate(model = ifelse(grepl("\\*",term), "With Interaction", "Without Interaction"),
            pfas_name = rename_pfas(pfas_name)) %>%
     select(pfas_name, model, everything(),-term)
     )
 
-# writexl::write_xlsx(outputs, fs::path(dir_result, "anova_prs_pfas_inter.xlsx"))
+writexl::write_xlsx(outputs, fs::path(dir_result, "anova_prs_pfas_inter_0828.xlsx"))
 ```
 
 # Table. Interaction of PRS and PFAS
@@ -156,7 +182,7 @@ interaction_models <- function(pfas) {
 covariate_input <- paste(covars[1:3], collapse = " + ")
 
 # create dataframe with names of dependent vars (PFAS) 
-pfas_names <- tibble(exposure = pfas_name)
+pfas_names <- tibble(exposure = c(pfas_name, "pfas_t_PFBS_detected"))
 
 ## create dataframe with names of SNP vars ----
 prs_name <- tibble(prs = "prs_wt")
@@ -211,11 +237,11 @@ res_inter <- all_results_df_hcc %>%
 ```{r,fig.width=15, fig.height=4}
 cuts <- quantile(data_hcc %>% filter(status == 0) %>% select(prs_wt), probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), na.rm = TRUE)
 
-res <- map(pfas_name, model_interaction)%>%
+res <- map(c(pfas_name, "pfas_t_PFBS_detected"), model_interaction)%>%
     bind_rows()%>%
     mutate(pfas = str_remove(pfas,"pfas_t_"))
 
-writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result.xlsx"))
+writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result_0828.xlsx"))
 
 res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 
@@ -313,7 +339,7 @@ res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 covariate_input <- paste(covars[1:4], collapse = " + ")
 
 # create dataframe with names of dependent vars (PFAS) 
-pfas_names <- tibble(exposure = pfas_name)
+pfas_names <- tibble(exposure = c(pfas_name, "pfas_t_PFBS_detected"))
 
 ## create dataframe with names of SNP vars ----
 snp_name <- tibble(snp = snp_name_scld)
@@ -521,7 +547,7 @@ min(pfhpa_gene_interaction$p_adjust2, na.rm = TRUE)
 min(pfhpa_gene_interaction$p_adjusted, na.rm = TRUE)
 # .12
 
-# writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_0421.xlsx"))
+writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_0828.xlsx"))
 
 ```
 

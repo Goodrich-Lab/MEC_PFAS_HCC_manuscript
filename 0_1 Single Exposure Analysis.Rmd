@@ -68,7 +68,7 @@ data_hcc_raw <- data %>% filter(setnum %in% sample_id1$setnum) %>%
   filter(!setnum %in% data_pfas_missing$setnum)
   
 pfas_mat_for_cor <- data_hcc_raw %>% 
-  dplyr::select(all_of(pfas_name))%>%
+  dplyr::select(all_of(pfas_name[-13]))%>%
   as.data.frame()
 
 # Run Correlation Matrix
@@ -191,11 +191,11 @@ ggsave(corplot,
 **All races(470), White(47), African American(51), Japanese American(178), Latino(160), Native Hawaiian(34)**
 
 ```{r analysis1}
-res_hcc <- epiomics::owas_clogit(data_hcc , 
+res_hcc <- epiomics::owas_clogit(data_hcc, 
                                  cc_set = "setnum", 
                                  cc_status = "status", 
                                  covars = covars,
-                                 omics = pfas_name,
+                                 omics = c(pfas_name,"pfas_t_PFBS_detected"),
                                  conf_int = TRUE) %>%
   mutate(odds_ratio = exp(estimate),
          exp_ci_low = exp(conf_low),
@@ -209,7 +209,7 @@ for(race in eth_categories[c(1:2)]) {
                                         cc_set = "setnum", 
                                         cc_status = "status", 
                                         covars = covars,
-                                        omics = pfas_name,
+                                        omics = c(pfas_name,"pfas_t_PFBS_detected"),
                                         conf_int = TRUE) %>%
     mutate(odds_ratio = exp(estimate),
            exp_ci_low = exp(conf_low),
@@ -220,7 +220,7 @@ for(race in eth_categories[c(1:2)]) {
 rm(res_hcc_temp)
 # reorder PFAS by estimate
 res_hcc1 <- res_hcc |> 
-  mutate(pfas_name = str_remove(feature_name, "pfas_lg2_"),
+  mutate(pfas_name = str_remove(feature_name, "pfas_t_"),
          sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
                            "FDR p value < 0.05",
                          p_value < 0.05 ~ "p value < 0.05", 
@@ -245,6 +245,7 @@ res_hcc2 <- res_hcc1 %>%
                           ))
 
 pfhpa_hcc_main <- res_hcc2  %>%
+    filter(!pfas_name %in% c("PFBS", "PFBS_detected"))%>%
     # filter(!type  %in% c("White \n(n = 46)", "African American \n(n = 50)"))%>%
     ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
     geom_point(size = 1) +
@@ -277,8 +278,8 @@ ggsave(filename = fs::path(dir_figures,
        height = 5,
        dpi = 300,
        bg = "white")
-# 
-# writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0416.xlsx"))
+
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0828.xlsx"))
 
 
 # (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -335,7 +336,7 @@ ggsave(filename = fs::path(dir_figures,
 covariate_input <- paste(covars, collapse = " + ")
 
 ## create dataframe with names of dependent vars (PFAS) ----
-pfas_names <- tibble(exposure = pfas_name_cat)
+pfas_names <- tibble(exposure = c(pfas_name_cat[-3], "pfas_t_PFBS_detected"))
 
 # Get Model covariates 
 covar_names <- tibble(
@@ -474,13 +475,16 @@ all_result_df <- all_results_df_hcc %>%
 ```
 
 ```{r Dose response}
-data_hcc1 <- data_hcc %>% mutate_at(.vars = pfas_name_cat,
-                                    .funs = ~as.numeric(.))
+data_hcc1 <- data_hcc %>% 
+  mutate_at(.vars = pfas_name_cat[-3],
+                                    .funs = ~as.numeric(.))%>%
+  mutate(pfas_t_PFBS_detected = ifelse(pfas_t_PFBS_detected == "Detected", 1, 0))
+
 res_hcc <- epiomics::owas_clogit(data_hcc1 , 
                                  cc_set = "setnum", 
                                  cc_status = "status", 
                                  covars = covars,
-                                 omics = pfas_name_cat,
+                                 omics = c(pfas_name_cat,"pfas_t_PFBS_detected"),
                                  conf_int = TRUE) %>%
   mutate(odds_ratio = exp(estimate),
          exp_ci_low = exp(conf_low),
@@ -494,7 +498,7 @@ for(race in eth_categories) {
                                         cc_set = "setnum", 
                                         cc_status = "status", 
                                         covars = covars,
-                                        omics = pfas_name_cat,
+                                        omics = c(pfas_name_cat,"pfas_t_PFBS_detected"),
                                         conf_int = TRUE) %>%
     mutate(odds_ratio = exp(estimate),
            exp_ci_low = exp(conf_low),
@@ -580,7 +584,7 @@ all_result_df3 <- all_result_df2 %>%
                           type == "Latino"~ "Latino \n(n = 158)",
                           type == "Others" ~ "Others \n(n = 134)"))
 
-# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_0416.xlsx"))
+# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_0828.xlsx"))
 
 pfhpa_hcc <-  ggplot(all_result_df3 %>% 
                         filter(pfas_name == "PFHPA") %>%
@@ -702,7 +706,7 @@ p2 <- pfna_hcc + geom_text(
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0521_PFHpA.jpeg"),
+                           "Fig1. Main Effect Final_0828_PFHpA.jpeg"),
        width = 10,
        height = 8,
        dpi = 300,
@@ -720,7 +724,7 @@ ggsave(filename = fs::path(dir_figures,
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0521_PFNA.jpeg"),
+                           "Fig1. Main Effect Final_0828_PFNA.jpeg"),
        width = 10,
        height = 8,
        dpi = 300,
@@ -739,7 +743,7 @@ ggsave(filename = fs::path(dir_figures,
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final.jpeg"),
+                           "Fig1. Main Effect Final_0828.jpeg"),
        width = 10,
        height = 12,
        dpi = 300,
@@ -754,7 +758,7 @@ res_hcc <- epiomics::owas_clogit(data_hcc ,
                                     cc_set = "setnum", 
                                     cc_status = "status", 
                                     covars = covars,
-                                    omics = pfas_name,
+                                    omics = pfas_name[-3],
                                     conf_int = TRUE) %>%
   mutate(odds_ratio = exp(estimate),
          exp_ci_low = exp(conf_low),
@@ -848,6 +852,6 @@ res_df1 <- res_df %>%
   rename(pfas_name = pfas) %>%
   mutate(pfas_name = rename_pfas(pfas_name))
 
-writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res.xlsx"))
+writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res_0828.xlsx"))
 ```
 
