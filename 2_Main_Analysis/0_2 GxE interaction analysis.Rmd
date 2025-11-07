@@ -40,6 +40,7 @@ snp_name_df <-  tidylog::left_join(pfc_chem_summaries,
 
 snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
 ```
+
 ## RAF calculation
 
 ```{r}
@@ -77,6 +78,7 @@ summarytools::view(
                           plain.ascii =   FALSE, 
                           valid.col = FALSE, 
                           headings = FALSE), method = "render")
+
 ```
 
 ## summary of SNPs after normalized
@@ -123,6 +125,50 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
                                            plain.ascii =   FALSE, 
                                            valid.col = FALSE, 
                                            headings = FALSE), method = "render")
+```
+# Distribution of SNP
+```{r}
+temp_data <- data_hcc %>% rename(rs5117 = x19_44915533)%>%
+  mutate(rs5117 = round(rs5117, 0)) %>%
+  drop_na(rs5117)%>%
+  mutate(rs5117 = case_when(rs5117 == 2 ~ "2 rs5117 alleles", 
+                            rs5117 == 1 ~ "1 rs5117 allele", 
+                            rs5117 == 0 ~ "0 rs5117 alleles"))
+ 
+temp_counts <- temp_data %>%
+  count(rs5117) 
+temp_counts <- temp_counts %>%
+  mutate(perc = n / sum(n) * 100)%>%
+  bind_rows(data.frame(rs5117 = "Overall",
+                       n = sum(temp_counts$n),
+                       perc = 100)) %>%
+  mutate(rs5117 = factor(rs5117, levels = c("2 rs5117 alleles",
+                                            "1 rs5117 allele",
+                                            "0 rs5117 alleles",
+                                            "Overall"
+                                            ))) %>%
+  mutate(group = if_else(str_detect(rs5117, "Overall"), "overall", "genetic"),
+         group = factor(group, levels = c("overall", "genetic")))
+
+# Plot
+(p_dist<- ggplot(temp_counts, aes(y = rs5117, x = n)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(perc, 0), "%")), 
+            hjust = -0.1) +  
+  labs(x = "Count") +
+  facet_grid(group ~. , scales = "free_y", space = "free_y")+
+  theme(panel.background = element_rect(fill="white"), 
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_blank(),
+          # strip.text.x = element_blank(),
+          text = element_text(size = 12),
+          # axis.text.x =element_text(angle = 60, hjust = 1),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "bottom",
+          legend.title = element_blank())+
+  xlim(0, max(temp_counts$n) * 1.2) ) 
 ```
 
 # Analysis 1: PRS risk score
@@ -694,7 +740,7 @@ model_interaction <- function(pfas){
                            robust = TRUE)
   # Interaction effect at high/low PRS
   res <- emtrends(model_with_int, ~x19_44915533, var = pfas, 
-                  at = list(`x19_44915533` = c(0, 2), 
+                  at = list(`x19_44915533` = c(0,1,2), 
                             smokestatus_imputed = "Never",
                             diabetes = "No",
                             q1_edih = 0,
@@ -711,7 +757,9 @@ model_interaction <- function(pfas){
     rename(estimate = ends_with(".trend"),
            conf_low = asymp.LCL,
            conf_high = asymp.UCL) %>%
-    mutate(type = ifelse(`x19_44915533` == 0, "Low Genetic", "High Genetic Risk"))
+    mutate(type = case_when(`x19_44915533` == 0 ~ "0 rs5117 alleles",
+                            `x19_44915533` == 1 ~ "1 rs5117 allele",
+                            `x19_44915533` == 2 ~ "2 rs5117 alleles"))
   
   # Main effect without interaction
   res_main <- epiomics::owas_clogit(data_hcc , 
@@ -745,8 +793,9 @@ View(res %>%
 (p <- res  %>%
     filter(pfas == "PFNA") %>%
     ggplot(aes(x = factor(type, 
-                          levels = c("High Genetic Risk", 
-                                     "Low Genetic Risk", 
+                          levels = c("2 rs5117 alleles", 
+                                     "1 rs5117 allele", 
+                                     "0 rs5117 alleles",
                                      "Overall (no interaction with SNP)")),
                y = exp(estimate))) +
     geom_point(size = 1) +
@@ -772,9 +821,28 @@ View(res %>%
 
 
 ggsave(filename = fs::path(dir_figures,
-                           "Fig2. Interaction of PFNA with SNP_0603.jpeg"),
+                           "Fig2. Interaction of PFNA with SNP_1103.jpeg"),
        width =5,
        height = 2.5,
+       dpi = 600,
+       bg = "white")
+
+(combined_plot <- cowplot::plot_grid(
+                                    NULL,
+                                    NULL,
+                                    p,
+                                    p_dist, 
+                                    labels = c("A. PFNA-HCC Risk by rs5117 Alleles", "B. Distribution of rs5117 Alleles", NULL, NULL), 
+                                    ncol = 2,
+                                    label_x = c(-0.29, -0.16),
+                                    rel_widths = c(1.2, 1),
+                                    rel_heights = c(0.1, 1,0.1,  1)
+                                    ))
+
+ggsave(filename = fs::path(dir_figures,
+                           "Fig2. Inter PFNA SNP and Dist SNP.jpeg"),
+       width =10,
+       height = 4,
        dpi = 600,
        bg = "white")
 ```
