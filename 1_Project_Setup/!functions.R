@@ -14,11 +14,11 @@ rename_pfas <- function(pfas_names){
   return(pfas2$pfas)
 }
 
-# Model with interaction of prs_wt and pfas
+# Model with interaction of prs_wt_std and pfas
 model_interaction <- function(pfas){
   # Formula
   formula_with_int <- as.formula(
-    paste("status ~", paste0(pfas, "*prs_wt"),
+    paste("status ~", paste0(pfas, "*prs_wt_std"),
           "+ v1 + v2 + v3 + v4 + v5 + v6 +", 
           paste(covars[1:3], collapse = " + "),
           "+ strata(setnum)"))
@@ -28,8 +28,8 @@ model_interaction <- function(pfas){
                            method = "efron", 
                            robust = TRUE)
   # Interaction effect at high/low PRS
-  res <- emtrends(model_with_int, ~prs_wt, var = pfas, 
-                  at = list(prs_wt = c(cuts[1], cuts[9]), 
+  res <- emtrends(model_with_int, ~prs_wt_std, var = pfas, 
+                  at = list(prs_wt_std = c(cuts[1], cuts[9]), 
                             smokestatus_imputed = "Never",
                             diabetes = "No",
                             q1_edih = 0,
@@ -41,11 +41,11 @@ model_interaction <- function(pfas){
                             v6 = 0),
                   transform = NULL) %>%
     data.frame() %>%
-    select(prs_wt, ends_with(".trend"), asymp.LCL, asymp.UCL) %>%
+    select(prs_wt_std, ends_with(".trend"), asymp.LCL, asymp.UCL) %>%
     rename(estimate = ends_with(".trend"),
            conf_low = asymp.LCL,
            conf_high = asymp.UCL) %>%
-    mutate(type = ifelse(prs_wt == cuts[1], "Low Genetic Risk", "High Genetic Risk"))
+    mutate(type = ifelse(prs_wt_std == cuts[1], "Low Genetic Risk", "High Genetic Risk"))
   
   # Main effect without interaction
   res_main <- epiomics::owas_clogit(data_hcc , 

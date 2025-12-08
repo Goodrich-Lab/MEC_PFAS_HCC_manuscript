@@ -39,6 +39,8 @@ snp_name_df <-  tidylog::left_join(pfc_chem_summaries,
   tidylog::filter(pct_one_val < 0.75)
 
 snp_name_scld <- c(paste0(snp_name_df$name, "_scld"))
+
+snp_name_new <- snp_name_df$name
 ```
 
 ## RAF calculation
@@ -126,6 +128,7 @@ summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
                                            valid.col = FALSE, 
                                            headings = FALSE), method = "render")
 ```
+
 # Distribution of SNP
 ```{r}
 temp_data <- data_hcc %>% rename(rs5117 = x19_44915533)%>%
@@ -177,7 +180,7 @@ temp_counts <- temp_counts %>%
 
 **Exposure: normalzied log2 PFAS**
 
-**Covars: smoking, diabetes, q1_edih, prs_wt, v1:v6**
+**Covars: smoking, diabetes, q1_edih, v1:v6**
 
 **Analysis: conditional logistic regression**
 
@@ -185,8 +188,8 @@ temp_counts <- temp_counts %>%
 
 **All races(480), White(48), African American(52), Japanese American(184), Latino(162), Native Hawaiian(34)**
 
-**ANOVA: Model1: status ~ pfas + prs_wt + smoking + diabetes + q1_edih + v1...+v6**
-**Model2:status ~ pfas + prs_wt + pfas:prs_wt + diabetes + q1_edih + v1...+v6**
+**ANOVA: Model1: status ~ pfas + prs_wt_std + smoking + diabetes + q1_edih + v1...+v6**
+**Model2:status ~ pfas + prs_wt_std + pfas:prs_wt_std + diabetes + q1_edih + v1...+v6**
 ```{r}
 # Anova: if interaction is significant
 interaction_models <- function(pfas) {
@@ -195,8 +198,8 @@ interaction_models <- function(pfas) {
                        paste(covars[1:3], collapse = " + "), 
                        "+ strata(setnum)")
   
-  frm_no_int <- as.formula(paste("status ~ prs_wt+", paste(pfas, base_covars, sep = " + ")))
-  frm_with_int <- as.formula(paste("status ~", paste0(pfas, "*prs_wt"), base_covars, sep = " + "))
+  frm_no_int <- as.formula(paste("status ~ prs_wt_std+", paste(pfas, base_covars, sep = " + ")))
+  frm_with_int <- as.formula(paste("status ~", paste0(pfas, "*prs_wt_std"), base_covars, sep = " + "))
   
   # Modeling
   model_no_int   <- clogit(frm_no_int, data = data_hcc)
@@ -220,7 +223,7 @@ interaction_models <- function(pfas) {
     select(pfas_name, model, everything(),-term)
     )
 
-writexl::write_xlsx(outputs, fs::path(dir_result, "anova_prs_pfas_inter_0828.xlsx"))
+writexl::write_xlsx(outputs, fs::path(dir_result, "anova_prs_pfas_inter_1208.xlsx"))
 ```
 
 # Table. Interaction of PRS and PFAS
@@ -231,7 +234,7 @@ covariate_input <- paste(covars[1:3], collapse = " + ")
 pfas_names <- tibble(exposure = c(pfas_name, "pfas_t_PFBS_detected"))
 
 ## create dataframe with names of SNP vars ----
-prs_name <- tibble(prs = "prs_wt")
+prs_name <- tibble(prs = "prs_wt_std")
 
 pfas_prs <- expand_grid(pfas_names, prs_name) %>%
   mutate(pfas_prs = paste(exposure,"*",prs)) 
@@ -279,15 +282,15 @@ res_inter <- all_results_df_hcc %>%
 
 
 # Plot PFAS and PRS interaction results
-*Estimated trend of pfas at 10% percentile and 90% percentile of weighted PRS(calculated in controls) 
+
 ```{r,fig.width=15, fig.height=4}
-cuts <- quantile(data_hcc %>% filter(status == 0) %>% select(prs_wt), probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), na.rm = TRUE)
+cuts <- quantile(data_hcc %>% filter(status == 0) %>% select(prs_wt_std), probs = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), na.rm = TRUE)
 
 res <- map(c(pfas_name, "pfas_t_PFBS_detected"), model_interaction)%>%
     bind_rows()%>%
     mutate(pfas = str_remove(pfas,"pfas_t_"))
 
-writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result_0828.xlsx"))
+writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx"))
 
 res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 
@@ -370,7 +373,7 @@ res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 
 **Exposure: normalzied log2 PFAS, normalized SNP**
 
-**Covars: smoking, diabetes, q1_edih, prs_wt, v1:v6**
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
 
 **Analysis: conditional logistic regression**
 
@@ -388,7 +391,9 @@ covariate_input <- paste(covars[1:4], collapse = " + ")
 pfas_names <- tibble(exposure = c(pfas_name, "pfas_t_PFBS_detected"))
 
 ## create dataframe with names of SNP vars ----
-snp_name <- tibble(snp = snp_name_scld)
+# snp_name <- tibble(snp = snp_name_scld)
+# based on Dave's suggestion use raw snp instead of normalized snp
+snp_name <- tibble(snp = snp_name_new)
 
 pfas_snp <- expand_grid(pfas_names, snp_name) %>%
   mutate(pfas_snp = paste(exposure,"*",snp)) 
@@ -593,7 +598,7 @@ min(pfhpa_gene_interaction$p_adjust2, na.rm = TRUE)
 min(pfhpa_gene_interaction$p_adjusted, na.rm = TRUE)
 # .12
 
-writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_0828.xlsx"))
+writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_1208.xlsx"))
 
 ```
 
@@ -719,12 +724,11 @@ interaction_models_snp <- function(pfas) {
     select(pfas_name, model, everything(),-term)
     )
 
-# writexl::write_xlsx(outputs, fs::path(dir_result, "anova_prs_pfas_inter.xlsx"))
 
 ```
 
 # Plot PFAS and SNP interaction results
-*Estimated trend of pfas at 10% percentile and 90% percentile of weighted PRS(calculated in controls) 
+
 ```{r,fig.width=15, fig.height=4}
 # Model with interaction of prs_wt and pfas
 model_interaction <- function(pfas){
@@ -821,7 +825,7 @@ View(res %>%
 
 
 ggsave(filename = fs::path(dir_figures,
-                           "Fig2. Interaction of PFNA with SNP_1103.jpeg"),
+                           "Fig2. Interaction of PFNA with SNP_1208.jpeg"),
        width =5,
        height = 2.5,
        dpi = 600,
@@ -840,7 +844,7 @@ ggsave(filename = fs::path(dir_figures,
                                     ))
 
 ggsave(filename = fs::path(dir_figures,
-                           "Fig2. Inter PFNA SNP and Dist SNP.jpeg"),
+                           "Fig2. Inter PFNA SNP and Dist SNP_1208.jpeg"),
        width =10,
        height = 4,
        dpi = 600,

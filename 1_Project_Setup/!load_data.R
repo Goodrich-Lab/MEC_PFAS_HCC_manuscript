@@ -142,7 +142,7 @@ pfas_name_cat <- colnames(data %>% dplyr::select(contains("quartile")))
 
 # covariates
 # covars = c("smokestatus_imputed", "q1_d_chol", "q1_elih_imputed") 
-covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_wt", "v1", "v2", "v3", "v4", "v5","v6")
+covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_wt_std", "v1", "v2", "v3", "v4", "v5","v6")
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 
 
@@ -160,3 +160,14 @@ diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
 rm(data_temp, data_temp_control, pfas_df_l, 
    sample_id1, sample_id2, sample_id3, 
    pfas_quartile)
+
+
+# standardizing the PRS by the control values in race/ethnicity
+
+data_hcc <- data_hcc%>%
+  group_by(eth) %>%
+  mutate(
+    prs_wt_std = (prs_wt - mean(prs_wt[casetype == "Control"], na.rm = TRUE)) /
+      sd(prs_wt[casetype == "Control"], na.rm = TRUE)
+  ) %>%
+  ungroup()

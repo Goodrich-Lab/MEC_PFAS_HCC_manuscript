@@ -25,7 +25,7 @@ source(fs::path(here::here("1_Project_Setup/!load_data.R")))
 ```
 ## Descriptives
 ```{r}
-data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,smokestatus_imputed, q1_d_chol, q1_elih_imputed, q1_edih, prs_wt) %>%
+data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,smokestatus_imputed, q1_d_chol, q1_elih_imputed, q1_edih, prs_wt, prs_wt_std) %>%
   tbl_summary(by = status,
               type = all_continuous() ~ "continuous2",
               statistic = list(
@@ -43,7 +43,7 @@ data_pfas_missing <- data_hcc %>% filter(is.na(pfas_t_PFDA))
 data_hcc_c <- data_hcc %>% filter(!setnum %in% data_pfas_missing$setnum)
 table(data_hcc_c$eth)
 
-data_hcc_c %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,smokestatus_imputed, q1_d_chol, q1_elih_imputed, q1_edih, prs_wt) %>%
+data_hcc_c %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokestatus, diabetes, studyarea, sex, year_between,smokestatus_imputed, q1_d_chol, q1_elih_imputed, q1_edih, prs_wt, prs_wt_std) %>%
   tbl_summary(by = status,
               type = all_continuous() ~ "continuous2",
               statistic = list(
@@ -182,7 +182,7 @@ ggsave(corplot,
 
 **Exposure: normalzied log2 PFAS**
 
-**Covars: smoking, diabetes, q1_edih, prs_wt, v1:v6**
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
 
 **Analysis: conditional logistic regression**
 
@@ -272,14 +272,14 @@ pfhpa_hcc_main <- res_hcc2  %>%
     scale_color_manual(values = c("grey","red","purple"))
 
 
-ggsave(filename = fs::path(dir_figures,
-                           "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth_0603.jpeg"),
-       width = 10,
-       height = 5,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth_0603.jpeg"),
+#        width = 10,
+#        height = 5,
+#        dpi = 300,
+#        bg = "white")
 
-writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0828.xlsx"))
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_1208.xlsx"))
 
 
 # (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -323,7 +323,7 @@ writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0
 
 **Exposure: categorized pfas(quartile)**
 
-**Covars: smoking, diabetes, q1_edih, prs_wt, v1:v6**
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
 
 **Analysis: conditional logistic regression**
 
@@ -583,7 +583,7 @@ all_result_df3 <- all_result_df2 %>%
                           type == "Latino"~ "Latino \n(n = 158)",
                           type == "Others" ~ "Others \n(n = 134)"))
 
-# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_0828.xlsx"))
+# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_1208.xlsx"))
 
 pfhpa_hcc <-  ggplot(all_result_df3 %>% 
                         filter(pfas_name == "PFHPA") %>%
@@ -742,7 +742,7 @@ ggsave(filename = fs::path(dir_figures,
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0828.jpeg"),
+                           "Fig1. Main Effect Final_1208.jpeg"),
        width = 10,
        height = 12,
        dpi = 300,
@@ -851,6 +851,6 @@ res_df1 <- res_df %>%
   rename(pfas_name = pfas) %>%
   mutate(pfas_name = rename_pfas(pfas_name))
 
-writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res_0828.xlsx"))
+writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res_1208.xlsx"))
 ```
 
