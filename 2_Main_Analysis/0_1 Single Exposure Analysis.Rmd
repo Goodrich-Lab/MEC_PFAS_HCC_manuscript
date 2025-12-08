@@ -477,8 +477,7 @@ all_result_df <- all_results_df_hcc %>%
 ```{r Dose response}
 data_hcc1 <- data_hcc %>% 
   mutate_at(.vars = pfas_name_cat[-3],
-                                    .funs = ~as.numeric(.))%>%
-  mutate(pfas_t_PFBS_detected = ifelse(pfas_t_PFBS_detected == "Detected", 1, 0))
+            .funs = ~as.numeric(.))
 
 res_hcc <- epiomics::owas_clogit(data_hcc1 , 
                                  cc_set = "setnum", 

@@ -46,9 +46,9 @@ for(pfas in pfas_name) {
                          Q3 = cuts[4],
                          Q4 = cuts[5]))
   data_temp <- data %>% dplyr::select(pfas)
-  data_temp[2] <- case_when(data_temp[1] <= cuts[1] ~ 1, 
-                            data_temp[1] <= cuts[2] ~ 2,
-                            data_temp[1] <= cuts[3] ~ 3,
+  data_temp[2] <- case_when(data_temp[1] <= cuts[2] ~ 1, 
+                            data_temp[1] <= cuts[3] ~ 2,
+                            data_temp[1] <= cuts[4] ~ 3,
                             !is.na(data_temp[1]) ~ 4) |> as.factor() 
   colnames(data_temp)[2] <- paste0(pfas, "_quartile")
   data <- data %>% bind_cols(data_temp %>% dplyr::select(contains("quartile")))
