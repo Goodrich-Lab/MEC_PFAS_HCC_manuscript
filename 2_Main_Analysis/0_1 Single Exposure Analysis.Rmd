@@ -273,13 +273,13 @@ pfhpa_hcc_main <- res_hcc2  %>%
 
 
 ggsave(filename = fs::path(dir_figures,
-                           "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth_0603.jpeg"),
+                           "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth_1207.jpeg"),
        width = 10,
        height = 5,
        dpi = 300,
        bg = "white")
 
-writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0828.xlsx"))
+# writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_0828.xlsx"))
 
 
 # (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -477,8 +477,7 @@ all_result_df <- all_results_df_hcc %>%
 ```{r Dose response}
 data_hcc1 <- data_hcc %>% 
   mutate_at(.vars = pfas_name_cat[-3],
-                                    .funs = ~as.numeric(.))%>%
-  mutate(pfas_t_PFBS_detected = ifelse(pfas_t_PFBS_detected == "Detected", 1, 0))
+                                    .funs = ~as.numeric(.))
 
 res_hcc <- epiomics::owas_clogit(data_hcc1 , 
                                  cc_set = "setnum", 
@@ -626,15 +625,15 @@ p1 <- pfhpa_hcc + geom_text(
 )
 
 
-# (fig <- cowplot::plot_grid(NULL, pfhpa_hcc_main, NULL, 
-#                            p1,
-#                            ncol = 1, 
-#                            rel_heights = c(0.02, 0.2, 0.02, 0.12),
-#                            labels = c("A. PFAS and HCC","", "B. Dose-response of PFHpA and HCC", ""),
-#                           label_x = c(0.13, 0, 0.04, 0),
-#                           label_size = 12,
-#                           align = "v",
-#                           axis = "lt"))
+(fig <- cowplot::plot_grid(NULL, pfhpa_hcc_main, NULL,
+                           p1,
+                           ncol = 1,
+                           rel_heights = c(0.02, 0.2, 0.02, 0.12),
+                           labels = c("A. PFAS and HCC","", "B. Dose-response of PFHpA and HCC", ""),
+                          label_x = c(0.13, 0, 0.04, 0),
+                          label_size = 12,
+                          align = "v",
+                          axis = "lt"))
 ```
 
 
@@ -706,7 +705,7 @@ p2 <- pfna_hcc + geom_text(
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0828_PFHpA.jpeg"),
+                           "Fig1. Main Effect Final_1207_PFHpA.jpeg"),
        width = 10,
        height = 8,
        dpi = 300,
@@ -724,7 +723,7 @@ ggsave(filename = fs::path(dir_figures,
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0828_PFNA.jpeg"),
+                           "Fig1. Main Effect Final_1207_PFNA.jpeg"),
        width = 10,
        height = 8,
        dpi = 300,
@@ -743,7 +742,7 @@ ggsave(filename = fs::path(dir_figures,
 
 ggsave(filename = fs::path(dir_figures,
                            # "main_figures",
-                           "Fig1. Main Effect Final_0828.jpeg"),
+                           "Fig1. Main Effect Final_1207.jpeg"),
        width = 10,
        height = 12,
        dpi = 300,
@@ -852,6 +851,6 @@ res_df1 <- res_df %>%
   rename(pfas_name = pfas) %>%
   mutate(pfas_name = rename_pfas(pfas_name))
 
-writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res_0828.xlsx"))
+# writexl::write_xlsx(res_df1, fs::path(dir_result, "heterogeneity_res_0828.xlsx"))
 ```
 

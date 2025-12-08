@@ -142,7 +142,9 @@ pfas_name_cat <- colnames(data %>% dplyr::select(contains("quartile")))
 
 # covariates
 # covars = c("smokestatus_imputed", "q1_d_chol", "q1_elih_imputed") 
-covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_wt", "v1", "v2", "v3", "v4", "v5","v6")
+# covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_wt", "v1", "v2", "v3", "v4", "v5","v6")
+covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_std_eth", "v1", "v2", "v3", "v4")
+
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 
 
@@ -156,6 +158,20 @@ diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirnam
 
 diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
                            .funs = list(scld = ~scale(.)))
+
+
+# Standardize PRS
+data_hcc <- data_hcc %>%
+  group_by(eth) %>%
+  mutate(
+    prs_mean_ctrl = mean(prs_wt[status == 0], na.rm = TRUE),
+    prs_sd_ctrl   = sd(prs_wt[status == 0],  na.rm = TRUE),
+    prs_std_eth   = (prs_wt - prs_mean_ctrl) / prs_sd_ctrl
+  ) %>%
+  ungroup() |> 
+  tidylog::select(-c(prs_mean_ctrl, prs_sd_ctrl))
+
+
 
 rm(data_temp, data_temp_control, pfas_df_l, 
    sample_id1, sample_id2, sample_id3, 
