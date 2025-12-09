@@ -83,7 +83,8 @@ summarytools::view(
 
 ```
 
-## summary of SNPs after normalized
+## summary of SNPs after normalized 
+* We used raw SNP instead of normalized SNPs in the following analysis
 ```{r summary of SNPs after normalized}
 data_analysis_hcc_snp <- data_hcc %>%
   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
@@ -322,7 +323,7 @@ res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 )
 
 # ggsave(filename = fs::path(dir_figures,
-#                            "Fig2. Interaction of PFHpA with NAFLD PRS_0421_All_PFAS.jpeg"),
+#                            "Fig2. Interaction of PFAS with NAFLD PRS_All_PFAS.jpeg"),
 #        width =14,
 #        height = 3,
 #        dpi = 600,
@@ -371,7 +372,7 @@ res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 # Analysis 2: All SNPS
 **Outcome: HCC vs control**
 
-**Exposure: normalzied log2 PFAS, normalized SNP**
+**Exposure: normalzied log2 PFAS, raw SNP**
 
 **Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
 

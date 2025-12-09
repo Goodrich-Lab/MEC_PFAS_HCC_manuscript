@@ -37,7 +37,8 @@ data_hcc %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smokest
   add_n()
 ```
 
-## Checking the SID that having Missing PFAS
+## Check for missing PFAS values and rerun descriptive statistics using the complete PFAS data
+* Complete PFAS means both control and case (same setnum) have PFAS values
 ```{r}
 data_pfas_missing <- data_hcc %>% filter(is.na(pfas_t_PFDA))
 data_hcc_c <- data_hcc %>% filter(!setnum %in% data_pfas_missing$setnum)
@@ -56,6 +57,8 @@ data_hcc_c %>% select(blood_age, status, eth, bmi_cat, alcohol_intake_cat, smoke
   add_p(pvalue_fun = ~ style_pvalue(.x, digits = 2)) %>%
   add_overall() %>%
   add_n()
+
+rm(data_hcc_c)
 ```
 
 ## Correlation of PFAS(raw)
@@ -170,11 +173,14 @@ cor_matrix_df_4 %>%
 
 
 # Save Figure
-ggsave(corplot,
-       filename = fs::path(dir_figures,
-                           "correlation_plot.jpeg"),
-       width = 12,
-       height = 10)
+# ggsave(corplot,
+#        filename = fs::path(dir_figures,
+#                            "correlation_plot.jpeg"),
+#        width = 12,
+#        height = 10)
+
+rm(cor_matrix, cor_matrix_df_1, cor_matrix_df_2, cor_matrix_df_3, cor_matrix_df_4,
+   cor_method_df_1, cor_method_df_2, data_pfas_missing, pfas_mat_for_cor)
 ```
 
 ## Analysis1. Conditional logistic regression - HCC
@@ -244,7 +250,7 @@ res_hcc2 <- res_hcc1 %>%
                           # type == "Native Hawaiian" ~ "Native Hawaiian \n(n = 34)"
                           ))
 
-pfhpa_hcc_main <- res_hcc2  %>%
+(pfhpa_hcc_main <- res_hcc2  %>%
     filter(!pfas_name %in% c("PFBS", "PFBS_detected"))%>%
     # filter(!type  %in% c("White \n(n = 46)", "African American \n(n = 50)"))%>%
     ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
@@ -269,52 +275,10 @@ pfhpa_hcc_main <- res_hcc2  %>%
           legend.position = "bottom",
           legend.title = element_blank())+
     coord_flip() +
-    scale_color_manual(values = c("grey","red","purple"))
+    scale_color_manual(values = c("grey","red","purple")))
 
-
-# ggsave(filename = fs::path(dir_figures,
-#                            "Fig 1a Single Exposure Analysis HCC with covars_stratified_by_eth_0603.jpeg"),
-#        width = 10,
-#        height = 5,
-#        dpi = 300,
-#        bg = "white")
 
 writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_1208.xlsx"))
-
-
-# (pfhpa_hcc_main_slides <- res_hcc2  %>%
-#     filter(type == "Overall \n(n = 464)")%>%
-#     ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
-#     geom_point(size = 1) +
-#     geom_errorbar(aes(ymin = exp(conf_low),
-#                       ymax = exp(conf_high)),
-#                   width = 0) +
-#     geom_hline(yintercept = 1, linetype = 2, color = "grey") +
-#     ylab("Odds Ratio (95% CI)") +
-#     # ggtitle("Exposure Outcome Analysis for HCC Cases") +
-#     # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 158)")), scales = "free_y")+
-#     theme(panel.background = element_rect(fill="white"), 
-#           strip.background = element_rect(fill = "white"),
-#           strip.text.y = element_text(angle = 0, hjust = 0),
-#           # strip.text.x = element_blank(),
-#           text = element_text(size = 15),
-#           # axis.title.x=element_blank(),
-#           axis.line.x = element_line(color = "black"),
-#           axis.title.y=element_blank(),
-#           axis.line.y = element_line(color = "black"),
-#           legend.position = "none",
-#           legend.title = element_blank())+
-#     coord_flip() +
-#     scale_color_manual(values = c("black","red","purple")))
-
-
-# ggsave(filename = fs::path(dir_figures,
-#                            "main_figures",
-#                            "Fig. PFAS main effect_Overall.jpeg"),
-#        width = 7,
-#        height = 5,
-#        dpi = 300,
-#        bg = "white")
 ```
 
 
@@ -549,7 +513,7 @@ for(data in data_list){
     select(-variable,-value) %>%
     group_by(pair, status) %>%
     summarise(count = n(), .groups = "drop")
-  # Now, to spread back for a wide format summary if needed
+  # Now, to spread back for a wide format summary
   wide_summary_hcc <- pivot_wider(long_data_hcc, names_from = status,
                                   values_from = count, values_fill = list(count = 0))%>%
     mutate(type = type) %>%
@@ -703,13 +667,13 @@ p2 <- pfna_hcc + geom_text(
                            align = "v",
                            axis = "lt"))
 
-ggsave(filename = fs::path(dir_figures,
-                           # "main_figures",
-                           "Fig1. Main Effect Final_0828_PFHpA.jpeg"),
-       width = 10,
-       height = 8,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            # "main_figures",
+#                            "Fig1. Main Effect Final_0828_PFHpA.jpeg"),
+#        width = 10,
+#        height = 8,
+#        dpi = 300,
+#        bg = "white")
 
 (fig <- cowplot::plot_grid(NULL, pfhpa_hcc_main, NULL,
                            p2,
@@ -721,13 +685,13 @@ ggsave(filename = fs::path(dir_figures,
                            align = "v",
                            axis = "lt"))
 
-ggsave(filename = fs::path(dir_figures,
-                           # "main_figures",
-                           "Fig1. Main Effect Final_0828_PFNA.jpeg"),
-       width = 10,
-       height = 8,
-       dpi = 300,
-       bg = "white")
+# ggsave(filename = fs::path(dir_figures,
+#                            # "main_figures",
+#                            "Fig1. Main Effect Final_0828_PFNA.jpeg"),
+#        width = 10,
+#        height = 8,
+#        dpi = 300,
+#        bg = "white")
 
 (fig <- cowplot::plot_grid(NULL, pfhpa_hcc_main, NULL,
                            p1, NULL, p2,

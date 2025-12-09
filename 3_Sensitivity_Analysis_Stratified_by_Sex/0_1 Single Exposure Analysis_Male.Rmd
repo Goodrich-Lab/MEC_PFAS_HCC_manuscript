@@ -29,7 +29,7 @@ source(fs::path(here::here("1_Project_Setup/!load_data.R")))
 
 **Exposure: normalzied log2 PFAS**
 
-**Covars: smoking, diabetes, q1_edih, prs_wt, v1:v6**
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
 
 **Analysis: conditional logistic regression**
 
@@ -127,7 +127,7 @@ pfhpa_hcc_main <- res_hcc2  %>%
 #        dpi = 300,
 #        bg = "white")
 # 
-writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_Male.xlsx"))
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_Male_1208.xlsx"))
 
 
 # (pfhpa_hcc_main_slides <- res_hcc2  %>%
@@ -423,7 +423,7 @@ all_result_df3 <- all_result_df2 %>%
                           # type == "Others" ~ "Others \n(n = 134)")
          )
 
-writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_Male.xlsx"))
+writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_Male_1208.xlsx"))
 
 pfhpa_hcc <-  ggplot(all_result_df3 %>% 
                         filter(pfas_name == "PFHPA"),
