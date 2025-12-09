@@ -79,7 +79,7 @@ writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose
 
 
 ## Supplemental Table S3
-```{r}
+```{r S3}
 s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx")) %>% 
   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
                                round(exp_ci_low, 2), ", ",
@@ -95,7 +95,7 @@ writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS
 
 
 ## Supplemental Table S4
-```{r}
+```{r S4}
 s4 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction_1208.xlsx")) %>% 
     mutate(type = case_when(type == "All races" ~ "Overall \n(n = 480)",
                           type == "Japanese American" ~ "Japanese American \n(n = 184)", 
@@ -135,3 +135,31 @@ writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFAS
 s4_pfhpa <- s4 %>% filter(pfas_name == "PFHpA")
 writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFHpA and SNP_1208.xlsx"))
 ```
+
+
+## Supplemental Table S5
+```{r}
+s5 <- readxl::read_xlsx(fs::path(dir_result,
+                                 "anova_prs_pfas_inter_1208.xlsx")) %>%
+  mutate(deviance = -2*logLik)%>%
+  pivot_wider(id_cols = pfas_name,
+              names_from = model,
+              values_from = c("deviance", "df", "p.value"))%>%
+  select(-`df_Without Interaction`, -`p.value_Without Interaction`)%>%
+  rename(
+         `Model With Interaction (Deviance)` = `deviance_With Interaction`,
+         `Model Without Interaction (Deviance)` = `deviance_Without Interaction`,
+         `ΔDF` = `df_With Interaction`,
+         `p-value` = `p.value_With Interaction`) %>%
+  mutate(`ΔDeviance` = abs(`Model With Interaction (Deviance)` - `Model Without Interaction (Deviance)`)) %>%
+  select(pfas_name, `Model Without Interaction (Deviance)`,
+         `Model With Interaction (Deviance)`,
+         `ΔDF`, `ΔDeviance`, `p-value`)%>%
+  mutate(pfas_name = factor(pfas_name, levels = c(s1$pfas_name)))%>%
+  arrange(pfas_name)
+
+writexl::write_xlsx(s5, fs::path(dir_result, "Supplemental Tables/Table S5. anova_tests_1208.xlsx"))
+
+  
+```
+

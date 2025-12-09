@@ -72,19 +72,20 @@ write_csv(raf, fs::path(dir_result,"Supplemental Tables", "raf_hcc.csv"))
 
 ## summary of SNPs
 ```{r summary of SNPs}
-summarytools::view(
-  summarytools::dfSummary(data_hcc %>% 
-                            dplyr::select(snp_name_df$name),
-                          style = 'grid',
-                          max.distinct.values = 10, 
-                          plain.ascii =   FALSE, 
-                          valid.col = FALSE, 
-                          headings = FALSE), method = "render")
+# summarytools::view(
+#   summarytools::dfSummary(data_hcc %>% 
+#                             dplyr::select(all_of(snp_name_df$name))%>%
+#                             janitor::clean_names(),
+#                           style = 'grid',
+#                           max.distinct.values = 10, 
+#                           plain.ascii =   FALSE, 
+#                           valid.col = FALSE, 
+#                           headings = FALSE), method = "render")
 
 ```
 
 ## summary of SNPs after normalized 
-* We used raw SNP instead of normalized SNPs in the following analysis
+* Finally, We used raw SNP instead of normalized SNPs in the following analysis
 ```{r summary of SNPs after normalized}
 data_analysis_hcc_snp <- data_hcc %>%
   # rename_at(.vars = vars(colnames(data_hcc %>% select(x1_220796686:x22_43928850))),
@@ -120,14 +121,16 @@ data_analysis_hcc_latino_snp <- data_hcc %>%
             .funs = list(scld = ~scale(.))) 
 
 
-summarytools::view(summarytools::dfSummary(data_analysis_hcc_snp %>%
-                                             dplyr::select(contains("scld"),
-                                                           -contains("pfas")),
-                                           style = 'grid',
-                                           max.distinct.values = 10, 
-                                           plain.ascii =   FALSE, 
-                                           valid.col = FALSE, 
-                                           headings = FALSE), method = "render")
+# summarytools::view(
+#   summarytools::dfSummary(data_analysis_hcc_snp %>%
+#                             dplyr::select(contains("scld"),
+#                                           -contains("pfas")),
+#                           style = 'grid',
+#                           max.distinct.values = 10,
+#                           plain.ascii =   FALSE,
+#                           valid.col = FALSE,
+#                           headings = FALSE),
+#   method = "render")
 ```
 
 # Distribution of SNP
@@ -291,7 +294,7 @@ res <- map(c(pfas_name, "pfas_t_PFBS_detected"), model_interaction)%>%
     bind_rows()%>%
     mutate(pfas = str_remove(pfas,"pfas_t_"))
 
-writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx"))
+# writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx"))
 
 res %>% select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)
 
@@ -599,7 +602,7 @@ min(pfhpa_gene_interaction$p_adjust2, na.rm = TRUE)
 min(pfhpa_gene_interaction$p_adjusted, na.rm = TRUE)
 # .12
 
-writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_1208.xlsx"))
+# writexl::write_xlsx(all_result_new, fs::path(dir_result, "PFAS and SNP interaction_1208.xlsx"))
 
 ```
 
@@ -791,9 +794,9 @@ res <- map(pfas_name, model_interaction)%>%
 
 # writexl::write_xlsx(res, fs::path(dir_result, "pfas_prs_interaction_result.xlsx"))
 
-View(res %>% 
+res %>% 
        select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value)%>%
-       filter(pfas == "PFNA"))
+       filter(pfas == "PFNA")
 
 (p <- res  %>%
     filter(pfas == "PFNA") %>%
