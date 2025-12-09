@@ -159,7 +159,7 @@ diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
 
 rm(data_temp, data_temp_control, pfas_df_l, 
    sample_id1, sample_id2, sample_id3, 
-   pfas_quartile)
+   pfas_quartile, cuts_df, cuts_df_l)
 
 
 # standardizing the PRS by the control values in race/ethnicity
