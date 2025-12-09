@@ -5,7 +5,5 @@
 .DS_Store
 *.html
 sandbox
-untargeted PFAS/
-comptox_ai/
-reference scripts/
-
+og_snp_data.csv
+archive
