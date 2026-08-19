@@ -65,3 +65,55 @@ model_interaction <- function(pfas){
   
   res_combined
 }
+
+model_interaction_alcohol <- function(pfas){
+  # Formula
+  formula_with_int <- as.formula(
+    paste("status ~", paste0(pfas, "*alcohol_intake"),
+          "+ v1 + v2 + v3 + v4 + v5 + v6 +", 
+          paste(covars, collapse = " + "),
+          "+ strata(setnum)"))
+  # Model
+  model_with_int <- clogit(formula_with_int, 
+                           data = data_hcc, 
+                           method = "efron", 
+                           robust = TRUE)
+  # Interaction effect at high/low alcohol_intake
+  res <- emtrends(model_with_int, ~alcohol_intake, var = pfas, 
+                  at = list(alcohol_intake = c(cuts[1], cuts[9]), 
+                            smokestatus_imputed = "Never",
+                            diabetes = "No",
+                            q1_edih = 0,
+                            prs_wt_std = 0,
+                            v1 = 0,
+                            v2 = 0,
+                            v3 = 0,
+                            v4 = 0,
+                            v5 = 0,
+                            v6 = 0),
+                  transform = NULL) %>%
+    data.frame() %>%
+    select(alcohol_intake, ends_with(".trend"), asymp.LCL, asymp.UCL) %>%
+    rename(estimate = ends_with(".trend"),
+           conf_low = asymp.LCL,
+           conf_high = asymp.UCL) %>%
+    mutate(type = ifelse(alcohol_intake == cuts[1], "Low Alcohol Intake", "High Alcohol Intake"))
+  
+  # Main effect without interaction
+  res_main <- epiomics::owas_clogit(data_hcc , 
+                                    cc_set = "setnum", 
+                                    cc_status = "status", 
+                                    covars = covars,
+                                    omics = pfas,
+                                    conf_int = TRUE) %>%
+    mutate(type = "Overall (no interaction with Alcohol)")
+  # Combine results
+  res_combined <- bind_rows(res_main, res) %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           group = if_else(str_detect(type, "Overall"), "overall", "with alcohol"),
+           pfas = pfas)
+  
+  res_combined
+}

@@ -9,10 +9,7 @@ data <- readRDS(fs::path(
   mutate(pfas_t_PFBS_detected = ifelse(pfas_t_PFBS_detected == "Detected", 1, 0))
 
 
-snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
-                                       "0_data_processing",
-                                       "0_raw_data",
-                                       "diet_PRS_data",
+snp_info <- readxl::read_xlsx(fs::path(dir_cleaned_data,
                                        "snp_info.xlsx")) %>%
   janitor::clean_names() %>%
   mutate(snp_name = paste0("x", chr, "_", pos38))
@@ -21,14 +18,13 @@ snp_info <- readxl::read_xlsx(fs::path(dir_data %>% dirname() %>% dirname() %>% 
 # untargeted_met_data <- readRDS(fs::path(dir_cleaned_data, "Untargeted_feature_metadata.RDS"))
 
 # variables--------------
-untargeted_pfas_name <- colnames(data %>% 
+untargeted_pfas_name <- colnames(data %>%
                         dplyr::select(contains("_ut_"), -contains("_detected")))
 
 pfas_name <- colnames(data %>% 
-                        dplyr::select(contains("pfas_t_")))[-13]
+                        dplyr::select(contains("pfas_t_")))[-c(3,13)] # PFBS was not included as continuous pfas here
 
 prs_name <- c("prs_uw", "prs_uw_tertile")
-
 
 # Add PFAS quartiles, based on controls only-------
 pfas_quartile <- data %>%
@@ -46,13 +42,32 @@ for(pfas in pfas_name) {
                          Q3 = cuts[4],
                          Q4 = cuts[5]))
   data_temp <- data %>% dplyr::select(pfas)
-  data_temp[2] <- case_when(data_temp[1] <= cuts[2] ~ 1, 
-                            data_temp[1] <= cuts[3] ~ 2,
-                            data_temp[1] <= cuts[4] ~ 3,
-                            !is.na(data_temp[1]) ~ 4) |> as.factor() 
+  data_temp[[2]] <- case_when(data_temp[[1]] <= cuts[2] ~ 1, 
+                            data_temp[[1]] <= cuts[3] ~ 2,
+                            data_temp[[1]] <= cuts[4] ~ 3,
+                            !is.na(data_temp[[1]]) ~ 4) |> as.factor() 
   colnames(data_temp)[2] <- paste0(pfas, "_quartile")
   data <- data %>% bind_cols(data_temp %>% dplyr::select(contains("quartile")))
 }
+
+# Add PFAS median, based on controls only-------
+
+cuts_df_median <- data.frame()
+for(pfas in pfas_name) {
+  data_temp_control <- pfas_quartile %>% dplyr::select(pfas)
+  cuts <- quantile(data_temp_control[1], 
+                   probs = 0.5, na.rm = TRUE)
+  cuts_df_median <- cuts_df_median %>% 
+    bind_rows(data.frame(pfas_name = pfas,
+                         median = cuts))
+  data_temp <- data %>% dplyr::select(pfas)
+  data_temp[[2]] <- case_when(data_temp[[1]] <= cuts ~ 1,
+                              !is.na(data_temp[[1]]) ~ 2) |> as.factor() 
+  colnames(data_temp)[2] <- paste0(pfas, "_median")
+  data <- data %>% bind_cols(data_temp %>% dplyr::select(contains("median")))
+}
+
+
 cuts_df_l <- cuts_df %>% 
   mutate(across(where(is.numeric), ~ signif(.x, 2)))%>%
   mutate(Quantile1 = paste0("≤ ", Q1 ),
@@ -64,6 +79,7 @@ cuts_df_l <- cuts_df %>%
                cols = c(Quantile1, Quantile2, Quantile3, Quantile4),
                names_to = "quartile",
                values_to = "value")
+
 
 writexl::write_xlsx(cuts_df_l,fs::path(dir_result, "quartile_cuts_df.xlsx"))
 # filter out controls/cases with no pfas values
@@ -78,8 +94,7 @@ sample_id3 <- data %>% filter(casetype == "Other HCC") %>%
   dplyr::select(setnum)
 
 
-# Comparison of targeted PFAS and Untargeted PFAS
-
+# Comparison of targeted PFAS and Untargeted PFAS------
 pfas_df_l <- data %>% select(sid, pfas_name) %>%
   pivot_longer(cols = pfas_name,
                values_to = "targeted_value")%>%
@@ -137,7 +152,7 @@ data_hcc <- data_hcc %>%
 
 
 # categorical pfas name
-pfas_name_cat <- colnames(data %>% dplyr::select(contains("quartile")))
+pfas_name_cat <- c(colnames(data %>% dplyr::select(contains("quartile"))))
 
 
 # covariates
@@ -146,20 +161,20 @@ covars = c("smokestatus_imputed", "diabetes", "q1_edih", "prs_wt_std", "v1", "v2
 covars_matched <- c("sex", "eth", "studyarea","q1_age_cohent")
 
 
-diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
-                                 "0_data_processing",
-                                 "0_raw_data",
-                                 "diet_PRS_data",
-                                 "pfas_food_diet.sas7bdat")) %>%
-  janitor::clean_names()
-
-
-diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
-                           .funs = list(scld = ~scale(.)))
-
-rm(data_temp, data_temp_control, pfas_df_l, 
-   sample_id1, sample_id2, sample_id3, 
-   pfas_quartile, cuts_df, cuts_df_l)
+# diet <- haven::read_sas(fs::path(dir_data %>% dirname() %>% dirname() %>% dirname(),
+#                                  "0_data_processing",
+#                                  "0_raw_data",
+#                                  "diet_PRS_data",
+#                                  "pfas_food_diet.sas7bdat")) %>%
+#   janitor::clean_names()
+# 
+# 
+# diet <- diet %>% mutate_at(.vars = c(colnames(diet)[-1]),
+#                            .funs = list(scld = ~scale(.)))
+# 
+# rm(data_temp, data_temp_control, pfas_df_l, 
+#    sample_id1, sample_id2, sample_id3, 
+#    pfas_quartile, cuts_df, cuts_df_l)
 
 
 # standardizing the PRS by the control values in race/ethnicity
@@ -171,3 +186,7 @@ data_hcc <- data_hcc%>%
       sd(prs_wt[casetype == "Control"], na.rm = TRUE)
   ) %>%
   ungroup()
+
+data_pfas_missing <- data_hcc %>% filter(is.na(pfas_t_PFDA)|is.na(prs_wt))
+data_analysis <- data_hcc %>% filter(!setnum %in% data_pfas_missing$setnum)
+
