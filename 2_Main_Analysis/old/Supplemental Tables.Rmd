@@ -1,0 +1,294 @@
+---
+title: 'MEC analysis'
+subtitle: "Final Analysis"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup univariate analysis, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("1_Project_Setup/!libraries.R")))
+source(fs::path(here::here("1_Project_Setup/!directories.R")))
+source(fs::path(here::here("1_Project_Setup/!functions.R")))
+source(fs::path(here::here("1_Project_Setup/!load_data.R")))
+
+```
+
+## Supplemental Table1
+```{r}
+s1 <- readxl::read_xlsx(fs::path(dir_result, "T1.Continuous PFAS and HCC_1208.xlsx")) %>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(exp(estimate), 2), " [", 
+                               round(exp(conf_low), 2), ", ",
+                               round(exp(conf_high), 2),"]"),
+         `P-Value` = signif(p_value, 2),
+         `Q-Value` = signif(adjusted_pval,2))%>% 
+  select(type, pfas_name, `Odds Ratio[95%CI]`,`P-Value`, `Q-Value`)%>%
+  pivot_wider(id_cols = "pfas_name",
+              names_from = "type",
+              values_from = c(`Odds Ratio[95%CI]`, `P-Value`, `Q-Value`)) %>%
+  # arrange(desc(`Odds Ratio[95%CI]_Overall \n(n = 464)`))%>%
+  arrange(desc(`Odds Ratio[95%CI]_Overall 
+(n cases: 223
+n controls: 223)`))%>%
+  mutate(pfas_name = rename_pfas(pfas_name))
+
+s4 <- readxl::read_xlsx(fs::path(dir_result, "heterogeneity_res_1208.xlsx")) 
+
+s1_full <- s1 %>% 
+  tidylog::left_join(s4 %>% select(pfas_name, or_ci, I2, Q, Q_pval), 
+                     by = c("pfas_name"))%>%
+  select(pfas_name, contains("Overall"), contains("Japanese"), 
+         contains("Latino"), contains("African"), contains("White"), everything())%>%
+  mutate(I2 = round(I2, 6),
+         Q = round(Q,2),
+         Q_pval = round(Q_pval, 2))
+
+writexl::write_xlsx(s1_full, fs::path(dir_result, "Supplemental Tables/Table S1. PFAS and HCC_1208.xlsx"))
+
+```
+
+## Supplemental Table 2
+```{r s2}
+s2 <- readxl::read_xlsx(fs::path(dir_result, "single_categorical_exposure_analysis_1208.xlsx")) %>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
+                               round(exp_ci_low, 2), ", ",
+                               round(exp_ci_high, 2),"]"),
+         `P-Value` = signif(p.value, 2),
+         `P trend` = signif(p_trend, 2),
+         `Q value` = signif(adjusted_pval,2))%>% 
+  select(type, pfas_name, `Odds Ratio[95%CI]`,`P-Value`, `P trend`,`Q value`, term)%>%
+  pivot_wider(id_cols = c("pfas_name", "term"),
+              names_from = "type",
+              values_from = c(`Odds Ratio[95%CI]`, `P-Value`, `P trend`, `Q value`)) %>%
+  mutate(term = paste(substr(term, (nchar(term)-8), nchar(term)-1) %>% toTitleCase(), substr(term, nchar(term), nchar(term)))) %>%
+  mutate(across(everything(), ~ ifelse(. == "1 [NA,NA]", "1", .)))%>%
+  mutate(pfas_name = rename_pfas(pfas_name)) %>%
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name))%>%
+  arrange(pfas_name)%>%
+  select(pfas_name, term, contains("Overall"), contains("Japanese"), 
+         contains("Latino"))
+
+writexl::write_xlsx(s2, fs::path(dir_result, "Supplemental Tables/Table S2. Dose response_1208.xlsx"))
+```
+
+
+
+## Supplemental Table S4
+```{r S4}
+s4 <- readxl::read_xlsx(fs::path(dir_result, "PFAS and SNP interaction_1208.xlsx")) %>% 
+    mutate(type = case_when(type == "All races" ~ "Overall \n(n = 480)",
+                          type == "Japanese American" ~ "Japanese American \n(n = 184)", 
+                        type == "Latino"~ "Latino \n(n = 162)"))%>%
+  mutate(name = case_when(grepl("Interaction", name_plot) ~ "SNP * PFAS Interaction",
+                            grepl("PFAS", name_plot) ~ "PFAS Main Effect",
+                            TRUE ~ "SNP Main Effect"),
+           name = factor(name, levels = c("SNP * PFAS Interaction", "SNP Main Effect", "PFAS Main Effect"))) %>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
+                               round(exp_ci_low, 2), ", ",
+                               round(exp_ci_high, 2),"]"),
+         `P-Value` = signif(p.value, 2),
+         `Q-Value` = signif(p_adjusted, 2))%>% 
+  select(type, pfas_name, snp, genes, name, rsid, `Odds Ratio[95%CI]`,`P-Value`, `Q-Value`)%>%
+  mutate(pfas_name = rename_pfas(pfas_name))%>%
+  pivot_wider(id_cols = c("type","pfas_name","snp", "genes","rsid"),
+              names_from = "name",
+              values_from = c(`Odds Ratio[95%CI]`, `P-Value`, `Q-Value`)) %>%
+  pivot_wider(id_cols = c("pfas_name","snp", "genes", "rsid"),
+              names_from = "type",
+              values_from = c(`Odds Ratio[95%CI]_PFAS Main Effect`:`Q-Value_SNP * PFAS Interaction`)) %>%
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name))%>%
+  arrange(pfas_name)%>%
+  select(pfas_name, snp, genes, rsid, contains("PFAS Main Effect_Overall"),
+         contains("SNP Main Effect_Overall"), 
+         contains("SNP * PFAS Interaction_Overall"),
+         contains("PFAS Main Effect_Japanese"),
+         contains("SNP Main Effect_Japanese"), 
+         contains("SNP * PFAS Interaction_Japanese"),
+         contains("PFAS Main Effect_Latino"),
+         contains("SNP Main Effect_Latino"), 
+         contains("SNP * PFAS Interaction_Latino")
+         )
+  
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFAS and SNP_1208.xlsx"))
+
+s4_pfhpa <- s4 %>% filter(pfas_name == "PFHpA")
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. PFHpA and SNP_1208.xlsx"))
+```
+
+
+## Supplemental Table S5
+```{r}
+
+s5_1 <- readxl::read_xlsx(fs::path(dir_result,
+                                 "anova_sex_pfas_inter.xlsx")) %>%
+  mutate(pfas_name = factor(pfas_name, levels = c(s1$pfas_name)))%>%
+  arrange(pfas_name)
+
+s5_2 <- readxl::read_xlsx(fs::path(dir_result,
+                                 "anova_race_pfas_inter.xlsx")) %>%
+  mutate(pfas_name = factor(pfas_name, levels = c(s1$pfas_name)))%>%
+  arrange(pfas_name)
+
+s5 <- s5_1 %>%
+  mutate(type = "Sex") %>%
+  bind_rows(s5_2 %>%
+              mutate(type = "Race"))%>%
+  mutate(`P-Interaction` = signif(p.value, 2),
+         `Q-Interaction` = signif(q_value, 2))%>%
+  select(type, pfas_name, `P-Interaction`, `Q-Interaction`)
+
+writexl::write_xlsx(s5, fs::path(dir_result, "Supplemental Tables/Table S5. PFAS HCC association by sex and race.xlsx"))
+
+# s5 <- readxl::read_xlsx(fs::path(dir_result,
+#                                  "anova_prs_pfas_inter_1208.xlsx")) %>%
+#   mutate(deviance = -2*logLik)%>%
+#   pivot_wider(id_cols = pfas_name,
+#               names_from = model,
+#               values_from = c("deviance", "df", "p.value"))%>%
+#   select(-`df_Without Interaction`, -`p.value_Without Interaction`)%>%
+#   rename(
+#          `Model With Interaction (Deviance)` = `deviance_With Interaction`,
+#          `Model Without Interaction (Deviance)` = `deviance_Without Interaction`,
+#          `ΔDF` = `df_With Interaction`,
+#          `p-value` = `p.value_With Interaction`) %>%
+#   mutate(`ΔDeviance` = abs(`Model With Interaction (Deviance)` - `Model Without Interaction (Deviance)`)) %>%
+#   select(pfas_name, `Model Without Interaction (Deviance)`,
+#          `Model With Interaction (Deviance)`,
+#          `ΔDF`, `ΔDeviance`, `p-value`)%>%
+#   mutate(pfas_name = factor(pfas_name, levels = c(s1$pfas_name)))%>%
+#   arrange(pfas_name)
+# 
+# writexl::write_xlsx(s5, fs::path(dir_result, "Supplemental Tables/Table S5. anova_tests_1208.xlsx"))
+
+
+```
+
+## Supplemental Table S6
+```{r S3}
+# s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx")) %>% 
+#   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
+#                                round(exp_ci_low, 2), ", ",
+#                                round(exp_ci_high, 2),"]"),
+#          `P-Value` = signif(p_value, 2))%>% 
+#   select(pfas, type, `Odds Ratio[95%CI]`,`P-Value`)%>%
+#   mutate(pfas = rename_pfas(pfas))%>%
+#   mutate(pfas = factor(pfas, levels = s1$pfas_name))%>%
+#   arrange(pfas)
+# 
+# writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and PRS_1208.xlsx"))
+
+
+s6 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction.xlsx")) %>%
+    # mutate(type = case_when(type == "All races" ~ "Overall \n(n = 480)",
+    #                       type == "Japanese American" ~ "Japanese American \n(n = 184)",
+    #                     type == "Latino"~ "Latino \n(n = 162)"))%>%
+  mutate(
+    name = case_when(str_detect(term, ":")   ~ "PFAS * PRS Interaction",
+                            term == "prs_wt_std"   ~ "PRS Main Effect",
+                            str_detect(term, "pfas_") ~ "PFAS Main Effect")) %>%
+  drop_na(name) %>%
+  mutate(name = factor(name, levels = c("PFAS * PRS Interaction", "PRS Main Effect", "PFAS Main Effect"))) %>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [",
+                               round(exp_ci_low, 2), ", ",
+                               round(exp_ci_high, 2),"]"),
+         `P-Value` = signif(p.value, 2),
+         `Q-Value` = signif(p_adjusted, 2))%>%
+  select(exposure, name, `Odds Ratio[95%CI]`,`P-Value`, `Q-Value`)%>%
+  mutate(pfas_name = rename_pfas(exposure))%>%
+  select(-exposure) %>%
+  pivot_wider(id_cols = c("pfas_name"),
+              names_from = "name",
+              values_from = c(`Odds Ratio[95%CI]`, `P-Value`, `Q-Value`)) %>%
+  # pivot_wider(id_cols = c("pfas_name","snp", "genes", "rsid"),
+  #             names_from = "type",
+  #             values_from = c(`Odds Ratio[95%CI]_PFAS Main Effect`:`Q-Value_SNP * PFAS Interaction`)) %>%
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name))%>%
+  arrange(pfas_name)
+
+writexl::write_xlsx(s6, fs::path(dir_result, "Supplemental Tables/Table S6. PFAS and PRS_0413.xlsx"))
+
+```
+
+## Supplemental Table S4
+```{r}
+meta_race <- readxl::read_xlsx(fs::path(dir_result,
+                                        "meta_analysis_res_race.xlsx"))%>%
+  mutate(type = "Race")
+
+meta_sex <- readxl::read_xlsx(fs::path(dir_result, 
+                                       "meta_analysis_sex_res.xlsx")) %>%
+  mutate(type = "Sex")
+  
+s4 <- meta_race %>% bind_rows(meta_sex) %>%
+  select(type, pfas_name, Q_pval) %>%
+  mutate(pfas_name = factor(pfas_name, levels = s1$pfas_name),
+         `P for heterogeneity` = signif(Q_pval, 2))%>%
+  select(-Q_pval) %>%
+  group_by(type) %>%
+  mutate(`Q for heterogeneity` = p.adjust(`P for heterogeneity`, "fdr") %>% signif(., 2))%>%
+  arrange(type, pfas_name)
+
+writexl::write_xlsx(s4, fs::path(dir_result, "Supplemental Tables/Table S4. Heterogeneity test.xlsx"))
+
+```
+
+
+## Supplemental Table S8
+```{r S3}
+# s3 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_interaction_result_1208.xlsx")) %>% 
+#   mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [", 
+#                                round(exp_ci_low, 2), ", ",
+#                                round(exp_ci_high, 2),"]"),
+#          `P-Value` = signif(p_value, 2))%>% 
+#   select(pfas, type, `Odds Ratio[95%CI]`,`P-Value`)%>%
+#   mutate(pfas = rename_pfas(pfas))%>%
+#   mutate(pfas = factor(pfas, levels = s1$pfas_name))%>%
+#   arrange(pfas)
+# 
+# writexl::write_xlsx(s3, fs::path(dir_result, "Supplemental Tables/Table S3. PFAS and PRS_1208.xlsx"))
+
+
+s8 <- readxl::read_xlsx(fs::path(dir_result, "pfas_prs_wt_median_interaction_result_0724.xlsx")) %>%
+  select(pfas, type, odds_ratio, exp_ci_low, exp_ci_high, p_value, q_value)%>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [",
+                               round(exp_ci_low, 2), ", ",
+                               round(exp_ci_high, 2),"]"),
+         `P-Value` = signif(p_value, 2),
+         `Q-Value` = signif(q_value, 2))%>%
+  select(pfas, type, `Odds Ratio[95%CI]`,`P-Value`, `Q-Value`)%>%
+  mutate(pfas = rename_pfas(pfas))%>%
+  mutate(pfas = factor(pfas, levels = s1$pfas_name))%>%
+  arrange(pfas)
+
+writexl::write_xlsx(s8, fs::path(dir_result, "Supplemental Tables/Table S8. PFAS and PRS_0724.xlsx"))
+
+```
+
+## Supplemental Table S5
+```{r}
+
+s5 <- readxl::read_xlsx(fs::path(dir_result,
+                                 "T5.Continuous PFAS and HCC_Stratified_by_hep_status.xlsx")) %>%
+  select(pfas_name, group, odds_ratio, exp_ci_low, exp_ci_high, p_value, adjusted_pval)%>%
+  mutate(`Odds Ratio[95%CI]` = paste0(round(odds_ratio, 2), " [",
+                               round(exp_ci_low, 2), ", ",
+                               round(exp_ci_high, 2),"]"),
+         `P-Value` = signif(p_value, 2),
+         `Q-Value` = signif(adjusted_pval, 2))%>%
+  select(pfas_name, group, `Odds Ratio[95%CI]`,`P-Value`, `Q-Value`)%>%
+  mutate(pfas_name = factor(pfas_name, levels = c(s1$pfas_name)))%>%
+  arrange(group, pfas_name)
+
+
+writexl::write_xlsx(s5, fs::path(dir_result, "Supplemental Tables/Table S4. PFAS HCC association by HEP status.xlsx"))
+```
+

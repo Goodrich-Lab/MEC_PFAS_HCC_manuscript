@@ -1,0 +1,592 @@
+---
+title: 'MEC analysis'
+subtitle: "Final Analysis"
+author: "Hongxu Wang, Jesse Goodrich"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup univariate analysis cat pfas, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("1_Project_Setup/!libraries.R")))
+source(fs::path(here::here("1_Project_Setup/!directories.R")))
+source(fs::path(here::here("1_Project_Setup/!functions.R")))
+source(fs::path(here::here("1_Project_Setup/!load_data.R")))
+
+```
+
+## Analysis1. Conditional logistic regression - HCC
+**Outcome: HCC vs control**
+
+**Exposure: normalzied log2 PFAS**
+
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
+
+**Analysis: conditional logistic regression**
+
+**Data Info: 223 cases, 223 controls**
+
+```{r analysis1}
+res_hcc <- epiomics::owas_clogit(data_analysis, 
+                                 cc_set = "setnum", 
+                                 cc_status = "status", 
+                                 covars = covars,
+                                 omics = c(pfas_name, "pfas_t_PFBS_detected"),
+                                 conf_int = TRUE,
+                                 method = "exact") %>%
+  mutate(odds_ratio = exp(estimate),
+         exp_ci_low = exp(conf_low),
+         exp_ci_high = exp(conf_high),
+         type = "Overall")
+
+eth_categories <- unique(data_analysis$eth_new)
+
+for(race in eth_categories) {
+  res_hcc_temp <- epiomics::owas_clogit(data_analysis %>% filter(eth_new == race) , 
+                                        cc_set = "setnum", 
+                                        cc_status = "status", 
+                                        covars = covars,
+                                        omics = c(pfas_name, "pfas_t_PFBS_detected"),
+                                        conf_int = TRUE,
+                                        method = "exact") %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           type = race)
+  res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
+}
+rm(res_hcc_temp)
+
+# reorder PFAS by estimate
+res_hcc1 <- res_hcc |> 
+  mutate(pfas_name = str_remove(feature_name, "pfas_t_"),
+         sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
+                           "FDR p value < 0.05",
+                         p_value < 0.05 ~ "p value < 0.05", 
+                         p_value >= 0.05 ~ "p value ≥ 0.05"),
+         sig = factor(sig, levels = c("p value ≥ 0.05", "p value < 0.05", "FDR p value < 0.05"))) %>%
+  mutate(covar = sub(".*~(.*?)\\+pfas.*", "\\1", formula))%>%
+  select(covar, everything())
+```
+
+### Fig1a. association of pfas and hcc - HCC
+```{r plot with covars only, fig.width=10, fig.height=5}
+### Compute sample sizes from data
+n_overall <- nrow(data_analysis)
+n_japanese <- nrow(data_analysis %>% filter(eth == "Japanese American"))
+n_latino <- nrow(data_analysis %>% filter(eth == "Latino"))
+n_white <- nrow(data_analysis %>% filter(eth == "White"))
+n_aa <- nrow(data_analysis %>% filter(eth == "African American"))
+n_nh <- nrow(data_analysis %>% filter(eth == "Native Hawaiian"))
+n_others <- nrow(data_analysis %>% filter(eth_new == "Others"))
+
+label_overall <- paste0("Overall \n(n cases: ", n_overall/2, "\nn controls: ", n_overall/2, ")")
+label_japanese <- paste0("Japanese American \n(n cases: ", n_japanese/2, "\nn controls: ", n_japanese/2, ")")
+label_latino <- paste0("Latino \n(n cases: ", n_latino/2, "\nn controls: ", n_latino/2, ")")
+label_white <- paste0("White \n(n cases: ", n_white/2, "\nn controls: ", n_white/2, ")")
+label_aa <- paste0("African American \n(n cases: ", n_aa/2, "\nn controls: ", n_aa/2, ")")
+label_nh <- paste0("Native Hawaiian \n(n cases: ", n_nh/2, "\nn controls: ", n_nh/2, ")")
+label_others <- paste0("Others \n(n cases: ", n_others/2, "\nn controls: ", n_others/2, ")")
+
+### Rename PFAS for plotting
+res_hcc2 <- res_hcc1 %>%
+  mutate(pfas_name = rename_pfas(pfas_name))%>%
+  mutate(pfas_name = fct_reorder(pfas_name, if_else(type == "Overall", estimate, NA_real_))) %>%
+  mutate(type = case_when(type == "Overall" ~ label_overall,
+                          type == "Japanese American" ~ label_japanese,
+                          type == "Latino"~ label_latino,
+                          type == "Others" ~ label_others
+                          # type == "White" ~ label_white,
+                          # type == "African American" ~ label_aa,
+                          # type == "Native Hawaiian" ~ label_nh
+                          ))
+
+(pfhpa_hcc_main <- res_hcc2  %>%
+    filter(!pfas_name %in% c("PFBS", "PFBS_detected"))%>%
+    ggplot(aes(x = pfas_name,y = exp(estimate), color = sig)) +
+    geom_point(size = 1) +
+    geom_errorbar(aes(ymin = exp(conf_low),
+                      ymax = exp(conf_high)),
+                  width = 0) +
+    geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+    ylab("Odds Ratio (95% CI)") +
+    # ggtitle("Exposure Outcome Analysis for HCC Cases") +
+    # facet_grid(.~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 158)", "Others \n(n = 132)")), scales = "free_y")+
+    facet_grid(.~ factor(type, levels = c(label_overall, label_japanese, label_latino, label_others)), scales = "free")+
+    theme(panel.background = element_rect(fill="white"), 
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_text(angle = 0, hjust = 0),
+          # strip.text.x = element_blank(),
+          text = element_text(size = 15),
+          # axis.title.x=element_blank(),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "bottom",
+          legend.title = element_blank())+
+    coord_flip() +
+    scale_color_manual(values = c("grey","red","purple")))
+
+
+writexl::write_xlsx(res_hcc2, fs::path(dir_result, "T1.Continuous PFAS and HCC_081026.xlsx"))
+```
+
+
+## Analysis2. Conditional logistic regression - Categorized PFAS and HCC
+**Outcome: HCC vs control**
+
+**Exposure: categorized pfas(quartile)**
+
+**Covars: smoking, diabetes, q1_edih, prs_wt_std, v1:v6**
+
+**Analysis: conditional logistic regression**
+
+
+```{r analysis1 cat}
+
+covariate_input <- paste(covars, collapse = " + ")
+
+## create dataframe with names of dependent vars (PFAS) ----
+pfas_names <- tibble(exposure = pfas_name_cat)
+
+# Get Model covariates 
+covar_names <- tibble(
+  covariates =  covariate_input)
+
+# Make all clogit formulas
+ind_vars <- expand_grid(pfas_names,  covar_names) |>  
+  mutate(formula = paste("status ~ ", 
+                         exposure, 
+                         "+", covariates, 
+                         "+strata(setnum)") |>
+           str_replace("\\+  \\+", " + "))
+
+## Analysis for all related participants
+ind_vars$clogit_out <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis,
+          method = "exact"
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Japanese American 
+ind_vars$clogit_out1 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis %>% filter(eth == "Japanese American"),
+          method = "exact"
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Latino
+ind_vars$clogit_out2 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis %>% filter(eth == "Latino"),
+          method = "exact"
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Others
+ind_vars$clogit_out3 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_analysis %>% filter(eth_new == "Others"),
+          method = "exact"
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit"))
+# Get final data -------------------
+
+intercept_data<- tibble(exposure = pfas_name_cat, 
+                        term = paste0(pfas_name_cat, "1"), 
+                        odds_ratio = rep(1,length(pfas_name_cat)),
+                        effect_est  = rep("1",length(pfas_name_cat)))
+
+all_results_df_hcc <- ind_vars %>% 
+  unnest(clogit_out) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out1, -clogit_out2) %>%
+  filter(grepl("pfas", term)) %>%
+  bind_rows(intercept_data) %>% 
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Overall")
+
+all_results_df_hcc_japan <- ind_vars %>% 
+  unnest(clogit_out1) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out2) %>%
+  filter(grepl("pfas", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type= "Japanese American")
+
+all_results_df_hcc_latino <- ind_vars %>% 
+  unnest(clogit_out2) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out1) %>%
+  filter(grepl("pfas", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Latino")
+
+all_results_df_hcc_others <- ind_vars %>% 
+  unnest(clogit_out3) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out1) %>%
+  filter(grepl("pfas", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Others")
+
+
+all_result_df <- all_results_df_hcc %>% 
+  bind_rows(all_results_df_hcc_japan) %>%
+  bind_rows(all_results_df_hcc_latino) %>%
+  bind_rows(all_results_df_hcc_others) %>%
+  select(exposure, term, odds_ratio, exp_ci_low, exp_ci_high,effect_est,p.value,p_adjusted, type) %>%
+  arrange(exposure)
+
+```
+
+
+```{r Dose response}
+data_analysis1 <- data_analysis %>% 
+  mutate_at(.vars = pfas_name_cat,
+            .funs = ~as.numeric(.))
+
+res_hcc <- epiomics::owas_clogit(data_analysis1 , 
+                                 cc_set = "setnum", 
+                                 cc_status = "status", 
+                                 covars = covars,
+                                 omics = pfas_name_cat,
+                                 conf_int = TRUE,
+                                 method = "exact") %>%
+  mutate(odds_ratio = exp(estimate),
+         exp_ci_low = exp(conf_low),
+         exp_ci_high = exp(conf_high),
+         type = "Overall")
+
+eth_categories <- unique(data_analysis1$eth_new)
+
+for(race in eth_categories) {
+  res_hcc_temp <- epiomics::owas_clogit(data_analysis1 %>% filter(eth_new == race) , 
+                                        cc_set = "setnum", 
+                                        cc_status = "status", 
+                                        covars = covars,
+                                        omics = c(pfas_name_cat),
+                                        conf_int = TRUE,
+                                        method = "exact") %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           type = race)
+  res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
+}
+
+# reorder PFAS by estimate
+res_hcc1 <- res_hcc |> 
+  mutate(sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
+                           "Sig.(FDR < 0.05)",
+                         p_value < 0.05 ~ "Sig.(p value < 0.05)", 
+                         p_value >= 0.05 ~ "Not Sig.")) 
+
+p_trend_df <- res_hcc1 %>% select(feature_name, p_value, adjusted_pval,type) %>%
+  rename(exposure = feature_name,
+         p_trend = p_value)
+
+all_result_df1 <- all_result_df %>% 
+  tidylog::left_join(p_trend_df, by = c("exposure", "type")) %>%
+  mutate(pfas_name = str_remove(exposure, "pfas_lg2_") %>%
+           str_remove("_quartile")) %>%
+  select(type,pfas_name, term,everything(), -exposure)
+
+## N value for each quartile split by status
+
+# Convert to long format and create a pair identifier
+data_list <- list(data1 = data_analysis %>% mutate(type = "Overall"), 
+                  data2 = data_analysis %>% filter(eth == "Japanese American") %>%
+                    mutate(type = "Japanese American"), 
+                  data3 = data_analysis %>% filter(eth == "Latino") %>%
+                    mutate(type = "Latino"),
+                  data4 = data_analysis %>% filter(eth_new == "Others") %>%
+                    mutate(type = "Others"))
+
+data_n <- data.frame()
+
+for(data in data_list){
+  type = unique(data$type)
+  long_data_analysis <- data %>%
+    select(contains("quartile"), status) %>%
+    mutate(status = ifelse(status == 0, "Control", "Case")) %>%
+    pivot_longer(cols = c(contains("quartile")), names_to = "variable",
+                 values_to = "value") %>%
+    drop_na() %>%
+    mutate(pair = paste0(variable, value)) %>%
+    select(-variable,-value) %>%
+    group_by(pair, status) %>%
+    summarise(count = n(), .groups = "drop")
+  # Now, to spread back for a wide format summary
+  wide_summary_hcc <- pivot_wider(long_data_analysis, names_from = status,
+                                  values_from = count, values_fill = list(count = 0))%>%
+    mutate(type = type) %>%
+    rename(term = pair)
+  data_n <- data_n %>% bind_rows(wide_summary_hcc)
+}
+
+all_result_df2 <- all_result_df1 %>% 
+  tidylog::left_join(data_n, by = c("term","type")) %>%
+  select(type:term, Control, Case, everything())%>%
+  arrange(pfas_name, type, term)
+
+all_result_df3 <- all_result_df2 %>% 
+  mutate(plot_name = substr(term, 
+                            start = nchar(term) - 8,
+                            stop = nchar(term)) %>% toTitleCase(),
+         pfas_name = str_remove(pfas_name, "pfas_t_")) %>%
+  mutate(
+    plot_name = paste(substr(plot_name, 1, 8), substr(plot_name, 9, 9)),
+    sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                    p.value < 0.05 ~ "Sig.",
+                    TRUE ~ "Not Sig."),
+    label = str_c("p trend = ", format(signif(p_trend, digits = 2), scientific = FALSE))) %>%
+  mutate(type = case_when(type == "Overall" ~ label_overall,
+                          type == "Japanese American" ~ label_japanese,
+                          type == "Latino"~ label_latino,
+                          type == "Others" ~ label_others))
+
+writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_081026.xlsx"))
+
+```
+
+### Fig1. Association of PFAS and HCC - Overall only (continuous)
+```{r plot overall only continuous, fig.width=5, fig.height=5}
+(pfhpa_hcc_overall <- res_hcc2 %>%
+    filter(!pfas_name %in% c("PFBS", "PFBS_detected")) %>%
+    filter(type == label_overall) %>%
+    ggplot(aes(x = pfas_name, y = exp(estimate), color = sig)) +
+    geom_point(size = 1) +
+    geom_errorbar(aes(ymin = exp(conf_low),
+                      ymax = exp(conf_high)),
+                  width = 0) +
+    geom_hline(yintercept = 1, linetype = 2, color = "grey") +
+    ylab("Odds Ratio (95% CI)") +
+    theme(panel.background = element_rect(fill="white"),
+          strip.background = element_rect(fill = "white"),
+          strip.text.y = element_text(angle = 0, hjust = 0),
+          text = element_text(size = 15),
+          axis.line.x = element_line(color = "black"),
+          axis.title.y=element_blank(),
+          axis.line.y = element_line(color = "black"),
+          legend.position = "bottom",
+          legend.title = element_blank())+
+    coord_flip() +
+    scale_color_manual(values = c("grey","red","purple")))
+```
+
+### Fig. Dose response plot for PFHpA - Overall only
+```{r dose response PFHpA overall only}
+quartile_cuts_df <- readxl::read_xlsx(fs::path(dir_result, "quartile_cuts_df.xlsx"))%>%
+  mutate(quartile = str_replace(quartile, "n", "r"))%>%
+  mutate(term = paste0(pfas_name, "_",
+                       tolower(quartile)))
+  
+all_result_df3_quartile <- all_result_df3 %>%
+  tidylog::left_join(quartile_cuts_df %>% select(term, value), 
+                     by = "term")%>%
+  mutate(value = ifelse(
+    str_detect(value, "≤|>"),
+    paste0("(", value, ")"),
+    value
+  ))%>%
+  mutate(value = str_replace(value, ", ", "-") %>%
+           str_replace(., "]", ")")) %>%
+  mutate(value = gsub("\\)", " ng/mL)", value))%>%
+  mutate(plot_name = paste0(str_remove(plot_name, "uartile "), " ", value))
+
+pfhpa_hcc_overall_dr <- ggplot(all_result_df3_quartile %>%
+                        filter(pfas_name == "PFHPA") %>%
+                        filter(type == label_overall),
+                      aes(x = odds_ratio, y = fct_rev(plot_name))) +
+    geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
+                  width = 0, position = position_dodge(width = 1)) +
+    geom_point(size = 1, position = position_dodge(width = 1)) +
+    geom_vline(xintercept = 1, linetype = 2, color = "grey") +
+    xlab("Odds Ratio (95% CI)") +
+    theme(legend.position = "bottom",
+      panel.background = element_rect(fill="white"),
+      strip.background = element_rect(fill = "white"),
+      strip.text.y = element_text(angle = 0, hjust = 0),
+      text = element_text(size = 15),
+      axis.title.y = element_blank(),
+      axis.line.x = element_line(color = "black"),
+      axis.line.y = element_line(color = "black"))
+
+(p1_overall <- pfhpa_hcc_overall_dr + geom_text(
+  data = all_result_df3 %>%
+    filter(pfas_name == "PFHPA") %>%
+    filter(type == label_overall),
+  mapping = aes(x = Inf, y = Inf, label = label),
+  color = "black",
+  hjust   = 1,
+  vjust   = 5,
+  size = 4
+))
+```
+
+### Fig. Dose response plot for PFNA - Overall only
+```{r dose response PFNA overall only}
+pfna_hcc_overall_dr <- ggplot(all_result_df3_quartile %>%
+                        filter(pfas_name == "PFNA") %>%
+                        filter(type == label_overall),
+                      aes(x = odds_ratio, y = fct_rev(plot_name))) +
+    geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
+                  width = 0, position = position_dodge(width = 1)) +
+    geom_point(size = 1, position = position_dodge(width = 1)) +
+    geom_vline(xintercept = 1, linetype = 2, color = "grey") +
+    xlab("Odds Ratio (95% CI)") +
+    theme(legend.position = "bottom",
+      panel.background = element_rect(fill="white"),
+      strip.background = element_rect(fill = "white"),
+      strip.text.y = element_text(angle = 0, hjust = 0),
+      text = element_text(size = 15),
+      axis.title.y = element_blank(),
+      axis.line.x = element_line(color = "black"),
+      axis.line.y = element_line(color = "black"))
+
+p2_overall <- pfna_hcc_overall_dr + geom_text(
+  data = all_result_df3 %>%
+    filter(pfas_name == "PFNA") %>%
+    filter(type == label_overall),
+  mapping = aes(x = Inf, y = Inf, label = label),
+  color = "black",
+  hjust   = 1,
+  vjust   = 5,
+  size = 4
+)
+```
+
+### Fig. Combined Overall only (one row)
+```{r combine figures overall only one row, fig.width=15, fig.height=5}
+(fig_overall_row <- cowplot::plot_grid(NULL, NULL, NULL, pfhpa_hcc_overall, p1_overall, p2_overall,
+                                       rel_heights = c(0.01, 0.2),
+                                       rel_widths = c(1.6,1.8,1.8),
+                           ncol = 3,
+                           labels = c("A. PFAS and HCC",
+                                      "B. Dose-response of PFHpA and HCC",
+                                      "C. Dose-response of PFNA and HCC",
+                                      "", "", ""),
+                           label_x = c(0, -0.12,-0.12, 0, 0,0),
+                           label_size = 12,
+                           align = "h",
+                           axis = "tb"))
+
+ggsave(filename = fs::path(dir_figures,
+                           "Fig1.Main_Effect_Overall_one_row_081026.jpeg"),
+       width = 15,
+       height = 5,
+       dpi = 300,
+       bg = "white")
+```
+
+## Meta-analysis - Race
+```{r meta analysis}
+
+meta_df <- res_hcc2 %>%
+  filter(type != label_overall) %>%
+  select(pfas_name, type, estimate, se_est)%>%
+  mutate(vi = se_est^2) %>%
+  select(-se_est)
+
+# write_csv(meta_df, fs::path(dir_result, "meta_df.csv"))
+
+res_df <- tibble()
+
+# Function to fit model and test heterogeneity for each PFAS
+analyze_pfas <- function(pfas, data) {
+  # Subset data for the current PFAS
+  
+  subset_data <- subset(data, pfas_name == pfas)%>%
+    select(-pfas_name)
+  
+  # Fit the random-effects model
+  model <- rma(yi = estimate, vi = vi, data = subset_data, method = "REML")
+  
+  # Calculate and print the I^2 statistic
+  # I2 <- model$I2
+  model_summary <- summary(model)
+  res_df <- data.frame(
+    pfas = pfas,
+    tau2 = model_summary$tau2,
+    I2 = model_summary$I2,
+    H2 = model_summary$H2,
+    Q = model_summary$QE,
+    Q_df = model_summary$k - 1,
+    Q_pval = model_summary$QEp,
+    pooled_lg_or = model_summary$b,
+    se = model_summary$se,
+    pval_model = model_summary$pval,
+    pooled_ci.lb = model_summary$ci.lb,
+    pooled_ci.ub = model_summary$ci.ub
+  )
+  return(res_df)
+}
+
+# Apply the function to each PFAS
+for (pfas in unique(meta_df$pfas_name)) {
+  print(pfas)
+  temp_df <- analyze_pfas(pfas, meta_df)
+  res_df <- res_df %>% bind_rows(temp_df)
+}
+
+res_df1 <- res_df %>% 
+  mutate(or_ci = paste0(round(exp(pooled_lg_or),2), " [",
+                        round(exp(pooled_ci.lb),2), ", ",
+                        round(exp(pooled_ci.ub),2), "]"))%>%
+  rename(pfas_name = pfas) %>%
+  mutate(pfas_name = rename_pfas(pfas_name))
+
+writexl::write_xlsx(res_df1, fs::path(dir_result, "meta_analysis_res_race_081026.xlsx"))
+```
+

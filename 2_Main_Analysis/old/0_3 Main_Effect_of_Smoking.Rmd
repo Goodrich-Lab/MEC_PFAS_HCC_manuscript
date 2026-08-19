@@ -1,0 +1,350 @@
+---
+title: 'MEC analysis'
+subtitle: "Final Analysis"
+author: "Hongxu Wang, Jesse Goodrich"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup univariate analysis cat pfas, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE, message = FALSE, cache=FALSE,collapse=FALSE)
+
+source(fs::path(here::here("1_Project_Setup/!libraries.R")))
+source(fs::path(here::here("1_Project_Setup/!directories.R")))
+source(fs::path(here::here("1_Project_Setup/!functions.R")))
+source(fs::path(here::here("1_Project_Setup/!load_data.R")))
+```
+
+
+## Analysis2. Conditional logistic regression - Categorized smoking status and HCC
+**Outcome: HCC vs control**
+
+**Exposure: smoking**
+
+**Covars: diabetes, q1_edih, prs_wt_std, v1:v6**
+
+**Analysis: conditional logistic regression**
+
+**Data Info: 240 cases, 240 controls**
+
+**All races(470), White(47), African American(51), Japanese American(178), Latino(160), Native Hawaiian(34)**
+
+```{r analysis1 cat}
+covariate_input <- paste(covars, collapse = " + ")
+
+## create dataframe with names of dependent vars (PFAS) ----
+exp_names <- tibble(exposure = c("smokestatus_imputed"))
+
+# Get Model covariates 
+covar_names <- tibble(
+  covariates =  covariate_input)
+
+# Make all clogit formulas
+ind_vars <- expand_grid(exp_names,  covar_names) |>  
+  mutate(formula = paste("status ~ ", 
+                         exposure, 
+                         "+", covariates, 
+                         "+strata(setnum)") |>
+           str_replace("\\+  \\+", " + "))
+
+## Analysis for all related participants
+ind_vars$clogit_out <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_hcc,
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Japanese American 
+ind_vars$clogit_out1 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_hcc %>% filter(eth == "Japanese American"),
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Latino
+ind_vars$clogit_out2 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_hcc %>% filter(eth == "Latino"),
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit")) 
+
+## Analysis for Others
+ind_vars$clogit_out3 <- map(
+  ind_vars$formula, 
+  ~clogit(as.formula(.),
+          data = data_hcc %>% filter(eth_new == "Others"),
+          method = "efron",
+          robust = TRUE
+  ) %>%
+    tidy(., conf.int = TRUE, level = 0.95) %>% 
+    mutate(
+      odds_ratio = exp(estimate),
+      exp_ci_low = exp(conf.low),
+      exp_ci_high = exp(conf.high),
+      model_type = "clogit"))
+# Get final data -------------------
+
+intercept_data<- tibble(exposure = c("smokestatus_imputed"), 
+                        term = paste0("smokestatus_imputed", "Never"), 
+                        odds_ratio = 1,
+                        effect_est  = "1")
+
+all_results_df_hcc <- ind_vars %>% 
+  unnest(clogit_out) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out1, -clogit_out2) %>%
+  filter(grepl("smoke", term)) %>%
+  bind_rows(intercept_data) %>% 
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Overall")
+
+all_results_df_hcc_japan <- ind_vars %>% 
+  unnest(clogit_out1) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out2) %>%
+  filter(grepl("smoke", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type= "Japanese American")
+
+all_results_df_hcc_latino <- ind_vars %>% 
+  unnest(clogit_out2) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out1) %>%
+  filter(grepl("smoke", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Latino")
+
+all_results_df_hcc_others <- ind_vars %>% 
+  unnest(clogit_out3) %>% 
+  select(model_type, covariates, everything()) %>%
+  mutate(sig = case_when(p.value < 0.05 ~ "Sig", 
+                         p.value >= 0.05 ~ "Not Sig"),
+         effect_est = jag2::effest_ci(odds_ratio, exp_ci_low, exp_ci_high)) %>%
+  select(-clogit_out, -clogit_out1) %>%
+  filter(grepl("smoke", term))%>%
+  bind_rows(intercept_data) %>%
+  mutate(p_adjusted = p.adjust(p.value, method = "fdr"),
+         type = "Others")
+
+
+all_result_df <- all_results_df_hcc %>% 
+  bind_rows(all_results_df_hcc_japan) %>%
+  bind_rows(all_results_df_hcc_latino) %>%
+  bind_rows(all_results_df_hcc_others) %>%
+  select(exposure, term, odds_ratio, exp_ci_low, exp_ci_high,effect_est,p.value,p_adjusted, type) %>%
+  arrange(exposure)
+```
+
+```{r Dose response}
+data_hcc1 <- data_hcc %>% 
+  mutate_at(.vars = "smokestatus_imputed",
+            .funs = ~as.numeric(.))
+
+res_hcc <- epiomics::owas_clogit(data_hcc1 , 
+                                 cc_set = "setnum", 
+                                 cc_status = "status", 
+                                 covars = covars[-1],
+                                 omics = "smokestatus_imputed",
+                                 conf_int = TRUE) %>%
+  mutate(odds_ratio = exp(estimate),
+         exp_ci_low = exp(conf_low),
+         exp_ci_high = exp(conf_high),
+         type = "Overall")
+
+eth_categories <- unique(data_hcc1$eth_new)
+
+for(race in eth_categories) {
+  res_hcc_temp <- epiomics::owas_clogit(data_hcc1 %>% filter(eth_new == race) , 
+                                        cc_set = "setnum", 
+                                        cc_status = "status", 
+                                        covars = covars,
+                                        omics = "smokestatus_imputed",
+                                        conf_int = TRUE) %>%
+    mutate(odds_ratio = exp(estimate),
+           exp_ci_low = exp(conf_low),
+           exp_ci_high = exp(conf_high),
+           type = race)
+  res_hcc <- res_hcc %>% bind_rows(res_hcc_temp)
+}
+
+# reorder PFAS by estimate
+res_hcc1 <- res_hcc |> 
+  mutate(sig = case_when((p_value < 0.05 & adjusted_pval < 0.05) ~
+                           "Sig.(FDR < 0.05)",
+                         p_value < 0.05 ~ "Sig.(p value < 0.05)", 
+                         p_value >= 0.05 ~ "Not Sig.")) 
+
+p_trend_df <- res_hcc1 %>% select(feature_name, p_value, adjusted_pval,type) %>%
+  rename(exposure = feature_name,
+         p_trend = p_value)
+
+all_result_df1 <- all_result_df %>% 
+  tidylog::left_join(p_trend_df, by = c("exposure", "type")) %>%
+  mutate(exp_name = "Smoking Status") %>%
+  select(type,exp_name,term,everything(), -exposure)
+
+## N value for each quartile split by status
+# Assuming df is your dataframe
+
+# Convert to long format and create a pair identifier
+data_list <- list(data1 = data_hcc %>% mutate(type = "Overall"), 
+                  data2 = data_hcc %>% filter(eth == "Japanese American") %>%
+                    mutate(type = "Japanese American"), 
+                  data3 = data_hcc %>% filter(eth == "Latino") %>%
+                    mutate(type = "Latino"),
+                  data4 = data_hcc %>% filter(eth_new == "Others") %>%
+                    mutate(type = "Others"))
+
+data_n <- data.frame()
+
+for(data in data_list){
+  type = unique(data$type)
+  long_data_hcc <- data %>%
+    select("smokestatus_imputed", status) %>%
+    mutate(status = ifelse(status == 0, "Control", "Case")) %>%
+    pivot_longer(cols = c(contains("smokestatus_imputed")), names_to = "variable",
+                 values_to = "value") %>%
+    drop_na() %>%
+    mutate(pair = paste0(variable, value)) %>%
+    select(-variable,-value) %>%
+    group_by(pair, status) %>%
+    summarise(count = n(), .groups = "drop")
+  # Now, to spread back for a wide format summary
+  wide_summary_hcc <- pivot_wider(long_data_hcc, names_from = status,
+                                  values_from = count, values_fill = list(count = 0))%>%
+    mutate(type = type) %>%
+    rename(term = pair)
+  data_n <- data_n %>% bind_rows(wide_summary_hcc)
+}
+
+all_result_df2 <- all_result_df1 %>% 
+  tidylog::left_join(data_n, by = c("term","type")) %>%
+  select(type:term, Control, Case, everything())%>%
+  arrange(exp_name, type, term)
+```
+
+### Fig 1b. Dose response plot for smokestatus_imputed and HCC
+```{r dose response plot}
+# Plot interaction effects
+all_result_df3 <- all_result_df2 %>% 
+  # mutate(plot_name = substr(term, 
+  #                           start = nchar(term) - 8,
+  #                           stop = nchar(term)) %>% toTitleCase(),
+  #        pfas_name = str_remove(pfas_name, "pfas_t_")) %>%
+  mutate(plot_name = case_when(grepl("Never", term) ~ "Smoke Status Never",
+                               grepl("Former", term) ~ "Smoke Status Former",
+                               grepl("Current", term) ~ "Smoke Status Current"))%>%
+  mutate(plot_name = factor(plot_name, levels = c("Smoke Status Current","Smoke Status Former","Smoke Status Never")))%>%
+  mutate(
+    sig = case_when(p_adjusted < 0.05 ~ "FDR. Sig.", 
+                    p.value < 0.05 ~ "Sig.",
+                    TRUE ~ "Not Sig."),
+    label = str_c("p trend = ", format(signif(p_trend, digits = 2), scientific = FALSE))) %>%
+  mutate(type = case_when(type == "Overall" ~ "Overall \n(n = 464)",
+                          type == "Japanese American" ~ "Japanese American \n(n = 176)", 
+                          type == "Latino"~ "Latino \n(n = 158)",
+                          type == "Others" ~ "Others \n(n = 134)"))
+
+# writexl::write_xlsx(all_result_df3, fs::path(dir_result, "single_categorical_exposure_analysis_1208.xlsx"))
+
+(smoke_hcc <-  ggplot(all_result_df3 %>% 
+                        # filter(pfas_name == "PFHPA") %>%
+                        filter(type != "Others \n(n = 134)"),
+                      aes(x = odds_ratio, y = fct_rev(plot_name))) +
+    geom_errorbar(aes(xmin = exp_ci_low, xmax = exp_ci_high),
+                  width = 0, position = position_dodge(width = 1)) +
+    geom_point(size = 1, position = position_dodge(width = 1)) + 
+    geom_vline(xintercept = 1, linetype = 2, color = "grey") +
+    # facet_grid( .~ factor(type, levels = c("Overall \n(n = 474)", "Japanese American \n(n = 182)", "Latino \n(n = 158)", "Others \n(n = 132)")))+
+    facet_grid(~ factor(type, levels = c("Overall \n(n = 464)", "Japanese American \n(n = 176)", "Latino \n(n = 158)")), scales = "free")+
+    xlab("Odds Ratio (95% CI)") +
+    theme(#axis.title.x = element_blank(),
+      # axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), 
+      legend.position = "bottom",
+      panel.background = element_rect(fill="white"), 
+      strip.background = element_rect(fill = "white"),
+      strip.text.y = element_text(angle = 0, hjust = 0),
+      # strip.text.x = element_blank(),
+      text = element_text(size = 15),
+      axis.title.y = element_blank(),
+      axis.line.x = element_line(color = "black"),
+      axis.line.y = element_line(color = "black")) )
+# +
+# ylab("OR (95% CI) per\ndoubling of PFAS") + 
+# ggtitle("Interaction of PFAS and PRS") +
+# scale_color_manual(values = c("purple", "black","red")))
+
+
+p1 <- smoke_hcc + geom_text(
+  data = all_result_df3%>%
+    # filter(pfas_name == "PFHPA") %>%
+    filter(type != "Others \n(n = 134)"),
+  mapping = aes(x = -Inf, y = -Inf, label = label),
+  color = "black",
+  hjust   = -0.3,
+  vjust   = -13,
+  size = 4
+)
+
+
+# (fig <- cowplot::plot_grid(NULL, NULL,alcohol_hcc_main, 
+#                            p1,
+#                            ncol = 2,
+#                            rel_heights = c(0.02,0.2),
+#                            rel_widths = c(1,2),
+#                            # labels = c("A. Alcohol and HCC","B. Dose-response of Alcohol and HCC","",""),
+#                           label_x = c(0.13,0.04, 0, 0),
+#                           label_size = 12,
+#                           align = "v",
+#                           axis = "lt"))
+
+ggsave(filename = fs::path(dir_figures,
+                           "Fig1. Cat Smoke Main Effect Final_1218.jpeg"),
+       width = 10,
+       height = 5,
+       dpi = 300,
+       bg = "white")
+```

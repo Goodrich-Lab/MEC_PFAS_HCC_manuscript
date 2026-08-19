@@ -1,0 +1,351 @@
+---
+title: 'MEC analysis'
+subtitle: "Sanity check: PFNA only"
+author: "Hongxu Wang"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+    code_folding: hide
+editor_options:
+  chunk_output_type: console
+---
+
+Re-runs every analysis from 0_1-0_4 for PFNA ONLY
+
+```{r setup, include=FALSE, echo=FALSE}
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, cache = FALSE, collapse = FALSE)
+
+source(fs::path(here::here("1_Project_Setup/!libraries.R")))
+source(fs::path(here::here("1_Project_Setup/!directories.R")))
+source(fs::path(here::here("1_Project_Setup/!functions.R")))
+source(fs::path(here::here("1_Project_Setup/!load_data.R")))
+```
+
+## Setup
+
+```{r subgroups}
+# HEP status join, as in "0_2 Stratified by HEP status.Rmd"
+hep <- read_sas(fs::path(dir_cleaned_data, "hhear_2020_00500_hep_072426.sas7bdat")) %>%
+  janitor::clean_names()
+
+data_analysis <- data_analysis %>%
+  left_join(hep %>% select(barcode, hep_b_c_9919), by = "barcode")
+
+# PFNA exposure variables
+# pfas_t_PFNA          continuous, log2-transformed & standardized
+# pfas_t_PFNA_quartile categorical, quartiles cut on controls
+# pfas_t_PFNA_median   dichotomous, median split on controls
+
+data_hcc_japanese <- data_analysis %>% filter(eth == "Japanese American")
+data_hcc_latino   <- data_analysis %>% filter(eth == "Latino")
+data_hcc_others   <- data_analysis %>% filter(eth_new == "Others")
+
+viral     <- data_analysis %>% filter(hep_b_c_9919 == 1)
+non_viral <- data_analysis %>% filter(status == 1) %>% filter(hep_b_c_9919 == 0)
+data_hcc_viral     <- data_analysis %>% filter(setnum %in% viral$setnum)
+data_hcc_non_viral <- data_analysis %>% filter(setnum %in% non_viral$setnum)
+
+data_hcc_male   <- data_analysis %>% filter(sex == "Male")
+data_hcc_female <- data_analysis %>% filter(sex == "Female")
+```
+
+## 0_1: Continuous PFNA and HCC, by race
+
+```{r 0_1 continuous}
+m1_overall  <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_analysis, method = "exact")
+m1_japanese <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_japanese, method = "exact")
+m1_latino   <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_latino, method = "exact")
+m1_others   <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_others, method = "exact")
+```
+
+```{r 0_1 continuous print}
+cat("-- Overall --\n");           print(broom::tidy(m1_overall,  conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+cat("-- Japanese American --\n"); print(broom::tidy(m1_japanese, conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+cat("-- Latino --\n");            print(broom::tidy(m1_latino,   conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+cat("-- Others --\n");            print(broom::tidy(m1_others,   conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+```
+
+## 0_1: Categorized (quartile) PFNA and HCC, by race
+
+```{r 0_1 quartile}
+m2_overall  <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_analysis, method = "exact")
+m2_japanese <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_japanese, method = "exact")
+m2_latino   <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_latino, method = "exact")
+m2_others   <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                         q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_others, method = "exact")
+```
+
+```{r 0_1 quartile print}
+cat("-- Overall --\n");           print(broom::tidy(m2_overall,  conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+cat("-- Japanese American --\n"); print(broom::tidy(m2_japanese, conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+cat("-- Latino --\n");            print(broom::tidy(m2_latino,   conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+cat("-- Others --\n");            print(broom::tidy(m2_others,   conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+```
+
+## 0_1: Dose-response trend test (quartile treated as numeric), by race
+
+```{r 0_1 dose response}
+m3_overall  <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                         diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_analysis, method = "exact")
+m3_japanese <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                         diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_japanese, method = "exact")
+m3_latino   <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                         diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_latino, method = "exact")
+m3_others   <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                         diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                         strata(setnum),
+                       data = data_hcc_others, method = "exact")
+
+cat("Overall  p_trend =", broom::tidy(m3_overall)$p.value[1],  "\n")
+cat("Japanese p_trend =", broom::tidy(m3_japanese)$p.value[1], "\n")
+cat("Latino   p_trend =", broom::tidy(m3_latino)$p.value[1],   "\n")
+cat("Others   p_trend =", broom::tidy(m3_others)$p.value[1],   "\n")
+```
+
+## 0_1: Meta-analysis (heterogeneity by race: Japanese American/Latino/Others)
+
+```{r 0_1 meta analysis}
+meta_race_df <- tibble(
+  type     = c("Japanese American", "Latino", "Others"),
+  estimate = c(coef(m1_japanese)["pfas_t_PFNA"], coef(m1_latino)["pfas_t_PFNA"], coef(m1_others)["pfas_t_PFNA"]),
+  se       = c(summary(m1_japanese)$coefficients["pfas_t_PFNA", "se(coef)"],
+               summary(m1_latino)$coefficients["pfas_t_PFNA", "se(coef)"],
+               summary(m1_others)$coefficients["pfas_t_PFNA", "se(coef)"])
+) %>% mutate(vi = se^2)
+
+meta_race <- rma(yi = estimate, vi = vi, data = meta_race_df, method = "REML")
+
+print(summary(meta_race))
+```
+
+## 0_2: Continuous PFNA and HCC, by HEP status
+
+```{r 0_2 continuous}
+m4_viral     <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                          q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_viral, method = "exact")
+m4_non_viral <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                          q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_non_viral, method = "exact")
+
+cat("-- Viral Cases --\n");     print(broom::tidy(m4_viral,     conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+cat("-- Non-Viral Cases --\n"); print(broom::tidy(m4_non_viral, conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+```
+
+## 0_2: Quartile PFNA and HCC, by HEP status
+
+```{r 0_2 quartile}
+m5_viral     <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                          q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_viral, method = "exact")
+m5_non_viral <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                          q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_non_viral, method = "exact")
+
+cat("-- Viral Cases --\n");     print(broom::tidy(m5_viral,     conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+cat("-- Non-Viral Cases --\n"); print(broom::tidy(m5_non_viral, conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+```
+
+## 0_2: Dose-response trend test, by HEP status
+
+```{r 0_2 dose response}
+m6_viral     <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                          diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_viral, method = "exact")
+m6_non_viral <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                          diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                          strata(setnum),
+                        data = data_hcc_non_viral, method = "exact")
+
+cat("Viral Cases     p_trend =", broom::tidy(m6_viral)$p.value[1],     "\n")
+cat("Non-Viral Cases p_trend =", broom::tidy(m6_non_viral)$p.value[1], "\n")
+```
+
+## 0_2: Meta-analysis (heterogeneity by HEP status: Viral vs Non-Viral)
+
+```{r 0_2 meta analysis}
+meta_hep_df <- tibble(
+  type     = c("Viral Cases", "Non-Viral Cases"),
+  estimate = c(coef(m4_viral)["pfas_t_PFNA"], coef(m4_non_viral)["pfas_t_PFNA"]),
+  se       = c(summary(m4_viral)$coefficients["pfas_t_PFNA", "se(coef)"],
+               summary(m4_non_viral)$coefficients["pfas_t_PFNA", "se(coef)"])
+) %>% mutate(vi = se^2)
+
+meta_hep <- rma(yi = estimate, vi = vi, data = meta_hep_df, method = "REML")
+
+print(summary(meta_hep))
+```
+
+## 0_3: Continuous PFNA and HCC, by sex
+
+```{r 0_3 continuous}
+m7_male   <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                       q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_male, method = "exact")
+m7_female <- clogit(status ~ pfas_t_PFNA + smokestatus_imputed + diabetes +
+                       q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_female, method = "exact")
+
+cat("-- Male --\n");   print(broom::tidy(m7_male,   conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+cat("-- Female --\n"); print(broom::tidy(m7_female, conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+```
+
+## 0_3: Quartile PFNA and HCC, by sex
+
+```{r 0_3 quartile}
+m8_male   <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                       q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_male, method = "exact")
+m8_female <- clogit(status ~ pfas_t_PFNA_quartile + smokestatus_imputed + diabetes +
+                       q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_female, method = "exact")
+
+cat("-- Male --\n");   print(broom::tidy(m8_male,   conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+cat("-- Female --\n"); print(broom::tidy(m8_female, conf.int = TRUE, exponentiate = TRUE) %>% filter(str_detect(term, "quartile")))
+```
+
+## 0_3: Dose-response trend test, by sex
+
+```{r 0_3 dose response}
+m9_male   <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                       diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_male, method = "exact")
+m9_female <- clogit(status ~ as.numeric(pfas_t_PFNA_quartile) + smokestatus_imputed +
+                       diabetes + q1_edih + prs_wt_std + v1 + v2 + v3 + v4 + v5 + v6 +
+                       strata(setnum),
+                     data = data_hcc_female, method = "exact")
+
+cat("Male   p_trend =", broom::tidy(m9_male)$p.value[1],   "\n")
+cat("Female p_trend =", broom::tidy(m9_female)$p.value[1], "\n")
+```
+
+## 0_3: Meta-analysis (heterogeneity by sex: Male vs Female)
+
+```{r 0_3 meta analysis}
+meta_sex_df <- tibble(
+  type     = c("Male", "Female"),
+  estimate = c(coef(m7_male)["pfas_t_PFNA"], coef(m7_female)["pfas_t_PFNA"]),
+  se       = c(summary(m7_male)$coefficients["pfas_t_PFNA", "se(coef)"],
+               summary(m7_female)$coefficients["pfas_t_PFNA", "se(coef)"])
+) %>% mutate(vi = se^2)
+
+meta_sex <- rma(yi = estimate, vi = vi, data = meta_sex_df, method = "REML")
+
+print(summary(meta_sex))
+```
+
+## 0_4: PRS interaction -- continuous PFNA x dichotomous weighted PRS (prs_wt_median)
+
+```{r 0_4 prs interaction continuous}
+data_analysis$status_surv <- survival::Surv(rep(1, nrow(data_analysis)), data_analysis$status)
+
+m10_int <- coxph(status_surv ~ pfas_t_PFNA * prs_wt_median + smokestatus_imputed +
+                    diabetes + q1_edih + v1 + v2 + v3 + v4 + v5 + v6 + strata(setnum),
+                  data = data_analysis, method = "exact")
+
+print(broom::tidy(m10_int, conf.int = TRUE, exponentiate = TRUE) %>%
+        filter(str_detect(term, ":")))
+```
+
+```{r 0_4 prs trends}
+# PFNA effect at low vs high genetic risk
+m10_trends <- emtrends(m10_int, ~ prs_wt_median, var = "pfas_t_PFNA",
+                        at = list(prs_wt_median = c("1", "2"),
+                                  smokestatus_imputed = "Never",
+                                  diabetes = "No",
+                                  q1_edih = 0,
+                                  prs_wt = 0,
+                                  v1 = 0, v2 = 0, v3 = 0, v4 = 0, v5 = 0, v6 = 0)) %>%
+  summary(infer = TRUE) %>%
+  as.data.frame() %>%
+  rename(estimate = ends_with(".trend")) %>%
+  mutate(odds_ratio = exp(estimate),
+         conf_low = exp(asymp.LCL),
+         conf_high = exp(asymp.UCL)) %>%
+  select(prs_wt_median, odds_ratio, conf_low, conf_high, z.ratio, p.value)
+
+cat("-- PFNA odds ratio (per unit exposure) at low (1) / high (2) genetic risk --\n")
+print(m10_trends)
+```
+
+```{r 0_4 prs main effect}
+# Main effect without interaction
+m10_main <- clogit(status ~ pfas_t_PFNA + prs_wt_median + smokestatus_imputed +
+                      diabetes + q1_edih + v1 + v2 + v3 + v4 + v5 + v6 + strata(setnum),
+                    data = data_analysis, method = "exact")
+
+cat("-- PFNA main effect, model also adjusted for prs_wt_median (no interaction) --\n")
+print(broom::tidy(m10_main, conf.int = TRUE, exponentiate = TRUE) %>% filter(term == "pfas_t_PFNA"))
+```
+
+## 0_4: PRS interaction -- dichotomous (median-split) PFNA x PRS(median)
+
+```{r 0_4 prs interaction dichotomous}
+m11_int <- clogit(status ~ pfas_t_PFNA_median * prs_wt_median + smokestatus_imputed +
+                     diabetes + q1_edih + v1 + v2 + v3 + v4 + v5 + v6 + strata(setnum),
+                   data = data_analysis, method = "exact")
+
+int_r_out <- interactionR::interactionR(m11_int,
+                                         exposure_names = c("prs_wt_median", "pfas_t_PFNA_median"),
+                                         ci.type = "mover",
+                                         ci.level = 0.95,
+                                         em = TRUE,
+                                         recode = FALSE)
+
+print(int_r_out$dframe)
+```
+
+## 0_4: PFNA x SNP interaction -- example SNP rs5117 (x19_44915533), All races
+
+```{r 0_4 snp interaction}
+m12_snp <- clogit(status ~ v1 + v2 + v3 + v4 + v5 + v6 +
+                     pfas_t_PFNA * x19_44915533 +
+                     smokestatus_imputed + diabetes + q1_edih + prs_wt_std +
+                     strata(setnum),
+                   data = data_analysis, method = "exact")
+
+print(broom::tidy(m12_snp, conf.int = TRUE, exponentiate = TRUE))
+```
