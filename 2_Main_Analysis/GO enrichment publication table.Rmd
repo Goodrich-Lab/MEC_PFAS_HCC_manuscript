@@ -1,0 +1,185 @@
+---
+title: "Gene Ontology enrichment analysis"
+subtitle: "Genes associated with PFAS–HCC candidate variants"
+author: "MEC PFAS Liver Cancer Study"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: false
+    code_folding: hide
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(dplyr)
+library(stringr)
+library(flextable)
+
+metadata_file <- fs::path_abs(fs::path(
+  here::here(),
+  "..", "..", "..", "..",
+  "1_analysis_ready_data",
+  "metadata",
+  "snp_info_new_082626.csv"
+))
+
+if (!file.exists(metadata_file)) {
+  stop("SNP metadata file not found: ", metadata_file)
+}
+```
+
+## Methods
+
+Gene symbols associated with the candidate variants were deduplicated and tested
+for over-representation in Gene Ontology (GO) biological process, molecular
+function, and cellular component terms. P values were adjusted using the
+Benjamini--Hochberg method. The table is restricted to GO terms containing at
+least three genes from the input list.
+
+```{r enrich-go}
+snp_metadata <- read.csv(metadata_file, check.names = FALSE)
+
+cleaned_genes <- snp_metadata$Genes |>
+  str_split(";\\s*") |>
+  unlist(use.names = FALSE) |>
+  trimws() |>
+  (\(x) x[!is.na(x) & x != "" & tolower(x) != "none"])() |>
+  unique()
+
+# The only enrichment analysis run in this report.
+ora_go_results <- enrichGO(
+  gene          = cleaned_genes,
+  OrgDb         = org.Hs.eg.db,
+  keyType       = "SYMBOL",
+  ont           = "ALL",
+  pAdjustMethod = "BH",
+  pvalueCutoff  = 0.05,
+  qvalueCutoff  = 0.05,
+  readable      = TRUE
+)
+
+res_more_than_two_gene <- as.data.frame(ora_go_results) |>
+  filter(Count > 2)
+```
+
+## Results
+
+The analysis included `r length(cleaned_genes)` unique candidate genes. The
+table reports `r nrow(res_more_than_two_gene)` enriched GO terms represented by
+at least three candidate genes.
+
+```{r publication-table}
+if (nrow(res_more_than_two_gene) == 0L) {
+  cat("No GO terms met the prespecified significance and gene-count criteria.")
+} else {
+  format_p <- function(x) {
+    ifelse(x < 0.001, "<0.001", sprintf("%.3f", x))
+  }
+
+  go_table_data <- res_more_than_two_gene |>
+    arrange(ONTOLOGY, p.adjust) |>
+    transmute(
+      Ontology = recode(
+        ONTOLOGY,
+        BP = "Biological process",
+        MF = "Molecular function",
+        CC = "Cellular component"
+      ),
+      `GO ID` = ID,
+      `GO term` = Description,
+      `Gene ratio` = GeneRatio,
+      `Candidate genes` = str_replace_all(geneID, "/", ", "),
+      `No. genes` = Count,
+      `P value` = format_p(pvalue),
+      `FDR-adjusted P value` = format_p(p.adjust)
+    )
+
+  go_table <- flextable(go_table_data) |>
+    set_caption(
+      caption = "Table 1. Gene Ontology terms enriched among PFAS–HCC candidate genes"
+    ) |>
+    theme_booktabs() |>
+    bold(part = "header") |>
+    bg(part = "header", bg = "#D9EAF2") |>
+    color(part = "header", color = "#17365D") |>
+    align(j = c("Ontology", "GO ID", "Gene ratio", "No. genes",
+                "P value", "FDR-adjusted P value"), align = "center",
+          part = "all") |>
+    valign(valign = "top", part = "body") |>
+    font(fontname = "Arial", part = "all") |>
+    fontsize(size = 9, part = "body") |>
+    fontsize(size = 9, part = "header") |>
+    padding(padding = 4, part = "all") |>
+    autofit() |>
+    add_footer_lines(
+      values = paste0(
+        "Abbreviations: FDR, false discovery rate; GO, Gene Ontology. ",
+        "Gene ratio is the number of candidate genes annotated to a term ",
+        "divided by the number of mapped candidate genes. FDR adjustment ",
+        "used the Benjamini–Hochberg method."
+      )
+    ) |>
+    fontsize(size = 8, part = "footer") |>
+    italic(part = "footer") |>
+    set_table_properties(layout = "autofit", width = 1)
+
+  go_table
+}
+```
+
+## Number of enriched pathways per gene
+
+```{r gene-pathway-counts, include=FALSE}
+gene_pathway_counts <- res_more_than_two_gene |>
+  select(ID, geneID) |>
+  mutate(Gene = str_split(geneID, "/")) |>
+  tidyr::unnest_longer(Gene) |>
+  distinct(ID, Gene) |>
+  count(Gene, name = "Number of pathways") |>
+  arrange(desc(`Number of pathways`), Gene)
+```
+
+The following table shows how many of the retained enriched GO terms include
+each candidate gene, ordered from the largest to the smallest count.
+
+```{r gene-pathway-table}
+if (nrow(gene_pathway_counts) == 0L) {
+  cat("No genes were represented in the retained GO terms.")
+} else {
+  gene_pathway_table <- flextable(gene_pathway_counts) |>
+    set_caption(
+      caption = "Table 2. Number of enriched Gene Ontology terms containing each candidate gene"
+    ) |>
+    theme_booktabs() |>
+    bold(part = "header") |>
+    bg(part = "header", bg = "#D9EAF2") |>
+    color(part = "header", color = "#17365D") |>
+    align(j = "Gene", align = "left", part = "all") |>
+    align(j = "Number of pathways", align = "center", part = "all") |>
+    valign(valign = "top", part = "body") |>
+    font(fontname = "Arial", part = "all") |>
+    fontsize(size = 9, part = "all") |>
+    padding(padding = 4, part = "all") |>
+    autofit() |>
+    add_footer_lines(
+      values = paste0(
+        "Counts are based on enriched GO terms with FDR-adjusted P < 0.05 ",
+        "and at least three candidate genes. Each gene is counted no more ",
+        "than once per GO term."
+      )
+    ) |>
+    fontsize(size = 8, part = "footer") |>
+    italic(part = "footer") |>
+    set_table_properties(layout = "autofit", width = 0.6)
+
+  gene_pathway_table
+}
+```
